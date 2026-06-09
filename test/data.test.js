@@ -3,6 +3,20 @@ import { MATCHES, STAGE_ORDER } from '../src/data/matches.js'
 import { VENUES } from '../src/data/venues.js'
 import { TEAMS, ALL_TEAMS } from '../src/data/teams.js'
 import { BRACKET } from '../src/utils/bracket.js'
+import { OFFICIAL_ET } from './fixtures/official-kickoffs.js'
+
+// Render a kickoff instant as Eastern Time 'YYYY-MM-DD HH:mm' (24h), so it can
+// be compared to the authoritative fixture regardless of how ko is stored.
+function easternKey(iso) {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/New_York',
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', hour12: false,
+  }).formatToParts(new Date(iso))
+  const g = (t) => parts.find((p) => p.type === t).value
+  const hour = g('hour') === '24' ? '00' : g('hour') // midnight quirk
+  return `${g('year')}-${g('month')}-${g('day')} ${hour}:${g('minute')}`
+}
 
 describe('schedule data integrity', () => {
   it('has all 104 matches', () => {
@@ -69,5 +83,38 @@ describe('schedule data integrity', () => {
 
   it('exposes stages in tournament order', () => {
     expect(STAGE_ORDER).toEqual(['Group', 'R32', 'R16', 'QF', 'SF', '3rd', 'Final'])
+  })
+})
+
+describe('kickoff times match the official schedule', () => {
+  it('has an official ET kickoff for every match (and vice versa)', () => {
+    const matchNums = MATCHES.map((m) => m.num).sort((a, b) => a - b)
+    const fixtureNums = Object.keys(OFFICIAL_ET).map(Number).sort((a, b) => a - b)
+    expect(fixtureNums).toEqual(matchNums)
+  })
+
+  it('every kickoff matches the official Eastern Time to the minute', () => {
+    const wrong = MATCHES.filter((m) => easternKey(m.ko) !== OFFICIAL_ET[m.num]).map(
+      (m) => `M${m.num}: data ${easternKey(m.ko)} ≠ official ${OFFICIAL_ET[m.num]}`,
+    )
+    expect(wrong).toEqual([])
+  })
+
+  it('every stored kickoff uses the -04:00 (US Eastern) offset', () => {
+    // The schedule stores every instant in ET; a stray offset would silently
+    // shift a game by hours (the class of bug this suite guards against).
+    expect(MATCHES.filter((m) => !m.ko.endsWith('-04:00')).map((m) => m.num)).toEqual([])
+  })
+
+  it('every kickoff lands at a plausible local hour (11:00–23:59) at its venue', () => {
+    const odd = MATCHES.filter((m) => {
+      const h = Number(
+        new Intl.DateTimeFormat('en-GB', {
+          timeZone: VENUES[m.venue].tz, hour: '2-digit', hour12: false,
+        }).format(new Date(m.ko)),
+      ) % 24
+      return h < 11 || h > 23
+    }).map((m) => m.num)
+    expect(odd).toEqual([])
   })
 })

@@ -6,6 +6,15 @@ data/source updates, deployment). Newest day on top.
 
 ## 2026-06-09
 
+- **Full kickoff-time audit + regression test:** cross-checked all 104 kickoffs
+  against authoritative sources (Wikipedia knockout table; wilx/Yahoo group
+  schedules). The group stage (1–72) was already correct. Found and fixed **14
+  more knockout games** (75, 79, 81, 82, 85, 87, 88, 90, 92, 93, 94, 96, 100,
+  101) whose local wall-clock time had been stored as if it were Eastern Time,
+  shifting them 1–3 hours early. Added `test/fixtures/official-kickoffs.js` (the
+  official ET kickoff for every match) and tests that assert each match matches
+  it to the minute, uses the `-04:00` offset, and lands at a plausible local
+  hour — so this class of error can't recur silently. Suite now 65 tests.
 - **Fix SoFi knockout kickoff times:** matches 73 (R32, Jun 28), 84 (R32,
   Jul 2) and 98 (QF, Jul 10) at SoFi Stadium were stored 2–3 hours early; all
   three are 12:00 PM PT / 3:00 PM ET per the official schedule (now
