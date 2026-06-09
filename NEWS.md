@@ -6,6 +6,10 @@ data/source updates, deployment). Newest day on top.
 
 ## 2026-06-09
 
+- **Analysis folder:** added `analysis/worst-hours.mjs` (+ generated
+  `worst-hours.csv` and a README) — a side analysis of which countries' fans get
+  the worst local hours to watch their group-stage games. Reads the app's data
+  modules directly; not part of the build.
 - **README refresh:** documented the newer features (home-country hover times,
   follow teams, next-match bar, week view, match detail, calendar subscription,
   theme) and added a "Schedule accuracy" section describing the fixture-based
