@@ -2,7 +2,15 @@ import { describe, it, expect } from 'vitest'
 import { MATCHES } from '../src/data/matches.js'
 import { VENUES } from '../src/data/venues.js'
 import { weekStartOf, addDays } from '../src/utils/week.js'
-import { dayKey, formatTime, matchStatus } from '../src/utils/time.js'
+import {
+  dayKey,
+  formatTime,
+  matchStatus,
+  teamLocalKickoffs,
+  teamKickoffTooltip,
+} from '../src/utils/time.js'
+import { TEAM_TIMEZONES } from '../src/data/teamTimezones.js'
+import { ALL_TEAMS } from '../src/data/teams.js'
 import { buildICS } from '../src/utils/ics.js'
 import { computeGroup } from '../src/utils/standings.js'
 
@@ -41,6 +49,54 @@ describe('time utils', () => {
     expect(matchStatus('2026-06-11T19:00:00Z', Date.parse('2026-06-10T00:00:00Z'))).toBe('upcoming')
     expect(matchStatus('2026-06-11T19:00:00Z', Date.parse('2026-06-11T19:30:00Z'))).toBe('live')
     expect(matchStatus('2026-06-11T19:00:00Z', Date.parse('2026-06-12T00:00:00Z'))).toBe('finished')
+  })
+})
+
+describe('team local kickoff tooltip', () => {
+  const open = MATCHES.find((m) => m.num === 1).ko // opener, 3pm EDT
+
+  it('gives a single home-time line for a single-zone country', () => {
+    // Abbrev rendering of Europe/London varies by ICU build (BST vs GMT+1), so
+    // assert the wall-clock and that exactly one line comes back.
+    const lines = teamLocalKickoffs(open, 'England')
+    expect(lines).toHaveLength(1)
+    expect(lines[0]).toMatch(/^Jun 11, 8:00 PM /)
+  })
+
+  it('lists one line per distinct wall-clock for a multi-zone country', () => {
+    // USA spans Hawaii→Eastern; the opener (3pm EDT) reads differently in each.
+    const lines = teamLocalKickoffs(open, 'USA')
+    expect(lines).toEqual([
+      'Jun 11, 9:00 AM HST',
+      'Jun 11, 11:00 AM AKDT',
+      'Jun 11, 12:00 PM PDT',
+      'Jun 11, 1:00 PM MDT',
+      'Jun 11, 2:00 PM CDT',
+      'Jun 11, 3:00 PM EDT',
+    ])
+  })
+
+  it('collapses zones that read the same clock at the instant', () => {
+    // Mexico lists 4 zones, but Tijuana (PDT) & Hermosillo (MST) share -7 in June.
+    expect(TEAM_TIMEZONES.Mexico).toHaveLength(4)
+    expect(teamLocalKickoffs(open, 'Mexico')).toHaveLength(3)
+  })
+
+  it('returns empty for unknown teams (e.g. knockout placeholders)', () => {
+    expect(teamLocalKickoffs(open, 'Winner Group A')).toEqual([])
+    expect(teamKickoffTooltip(open, 'Winner Group A')).toBe('')
+  })
+
+  it('builds a labelled multi-line tooltip', () => {
+    expect(teamKickoffTooltip(open, 'England')).toMatch(/^Kickoff in England:\nJun 11, 8:00 PM /)
+    expect(teamKickoffTooltip(open, 'USA')).toMatch(/^Kickoff in USA \(local times\):\n/)
+  })
+
+  it('has a timezone entry for every qualified team', () => {
+    for (const name of ALL_TEAMS) {
+      expect(TEAM_TIMEZONES[name], `${name} missing a home timezone`).toBeTruthy()
+      expect(TEAM_TIMEZONES[name].length).toBeGreaterThan(0)
+    }
   })
 })
 

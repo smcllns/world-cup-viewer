@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { VENUES } from '../data/venues.js'
 import { FLAG_BY_TEAM } from '../data/teams.js'
 import { STAGE_LABELS } from '../data/matches.js'
-import { dayKey, formatTime, tzAbbrev, matchStatus } from '../utils/time.js'
+import { dayKey, formatTime, tzAbbrev, matchStatus, teamKickoffTooltip } from '../utils/time.js'
 import { useFollow } from '../context/follow.jsx'
 
 function parts(ms) {
@@ -63,9 +63,9 @@ export default function NextMatch({ matches, tz }) {
 
       <div className="nm-teams">
         <span className="nm-flag">{FLAG_BY_TEAM[match.t1] || '•'}</span>
-        <span className="nm-name">{match.t1}</span>
+        <span className="nm-name" title={teamKickoffTooltip(match.ko, match.t1) || undefined}>{match.t1}</span>
         <span className="nm-v">vs</span>
-        <span className="nm-name nm-name-right">{match.t2}</span>
+        <span className="nm-name nm-name-right" title={teamKickoffTooltip(match.ko, match.t2) || undefined}>{match.t2}</span>
         <span className="nm-flag">{FLAG_BY_TEAM[match.t2] || '•'}</span>
       </div>
 

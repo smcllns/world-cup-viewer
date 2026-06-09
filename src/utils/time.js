@@ -2,6 +2,8 @@
 // absolute instant (ISO string with offset), so the same instant can be
 // rendered into whatever timezone the viewer selects.
 
+import { TEAM_TIMEZONES } from '../data/teamTimezones.js'
+
 // The viewer's own IANA timezone, e.g. "America/Chicago" or "Europe/London".
 export function detectTimezone() {
   try {
@@ -74,6 +76,42 @@ export function tzAbbrev(iso, tz) {
   }).formatToParts(new Date(iso))
   const part = parts.find((p) => p.type === 'timeZoneName')
   return part ? part.value : ''
+}
+
+// Kickoff as "Jun 11, 1:00 PM" in a given timezone (date + wall-clock time).
+function formatDateTimeShort(iso, tz) {
+  const d = new Date(iso)
+  const date = d.toLocaleDateString('en-US', { timeZone: tz, month: 'short', day: 'numeric' })
+  const time = d.toLocaleTimeString('en-US', { timeZone: tz, hour: 'numeric', minute: '2-digit' })
+  return `${date}, ${time}`
+}
+
+// Distinct local kickoff strings for a team's home country, e.g.
+// ["Jun 11, 1:00 PM CST", "Jun 11, 11:00 AM PST"]. Countries spanning several
+// timezones yield one entry per distinct wall-clock; zones that read the same
+// clock at this instant collapse to a single line. Returns [] for teams with no
+// known home zone (e.g. knockout placeholders like "Winner Group A").
+export function teamLocalKickoffs(iso, teamName) {
+  const zones = TEAM_TIMEZONES[teamName]
+  if (!zones || zones.length === 0) return []
+  const seen = new Set()
+  const out = []
+  for (const tz of zones) {
+    const clock = formatDateTimeShort(iso, tz)
+    if (seen.has(clock)) continue
+    seen.add(clock)
+    out.push(`${clock} ${tzAbbrev(iso, tz)}`)
+  }
+  return out
+}
+
+// Multi-line tooltip text for hovering a team: when the match kicks off in that
+// team's home timezone(s). Empty string when the team has no known home zone.
+export function teamKickoffTooltip(iso, teamName) {
+  const lines = teamLocalKickoffs(iso, teamName)
+  if (lines.length === 0) return ''
+  const head = lines.length > 1 ? `Kickoff in ${teamName} (local times):` : `Kickoff in ${teamName}:`
+  return [head, ...lines].join('\n')
 }
 
 // Match status relative to "now". Group/knockout games run ~2 hours; we treat

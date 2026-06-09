@@ -3,7 +3,7 @@ import { VENUES } from '../data/venues.js'
 import { FLAG_BY_TEAM } from '../data/teams.js'
 import { STAGE_LABELS } from '../data/matches.js'
 import { US_BROADCAST } from '../data/broadcast.js'
-import { formatTime, formatDateLong, tzAbbrev, matchStatus } from '../utils/time.js'
+import { formatTime, formatDateLong, tzAbbrev, matchStatus, teamKickoffTooltip } from '../utils/time.js'
 import { downloadICS } from '../utils/ics.js'
 import { useFollow } from '../context/follow.jsx'
 
@@ -76,7 +76,7 @@ export default function MatchDetail({ match, tz, hideScores, onClose }) {
         </div>
 
         <div className="md-teams">
-          <div className="md-team">
+          <div className="md-team" title={teamKickoffTooltip(match.ko, match.t1) || undefined}>
             <span className="md-flag">{FLAG_BY_TEAM[match.t1] || '•'}</span>
             <span className="md-name">{match.t1}</span>
             <FollowStar name={match.t1} />
@@ -96,7 +96,7 @@ export default function MatchDetail({ match, tz, hideScores, onClose }) {
               <span className="md-vs">vs</span>
             )}
           </div>
-          <div className="md-team">
+          <div className="md-team" title={teamKickoffTooltip(match.ko, match.t2) || undefined}>
             <span className="md-flag">{FLAG_BY_TEAM[match.t2] || '•'}</span>
             <span className="md-name">{match.t2}</span>
             <FollowStar name={match.t2} />

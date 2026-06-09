@@ -3,17 +3,18 @@ import { VENUES } from '../data/venues.js'
 import { FLAG_BY_TEAM } from '../data/teams.js'
 import { STAGE_LABELS } from '../data/matches.js'
 import { US_BROADCAST } from '../data/broadcast.js'
-import { formatTime, tzAbbrev, matchStatus } from '../utils/time.js'
+import { formatTime, tzAbbrev, matchStatus, teamKickoffTooltip } from '../utils/time.js'
 import { downloadICS } from '../utils/ics.js'
 import { useFollow } from '../context/follow.jsx'
 import { useDetail } from '../context/detail.js'
 
-function Team({ name }) {
+function Team({ name, ko }) {
   const flag = FLAG_BY_TEAM[name]
   const { isFollowed, toggle } = useFollow()
   const on = Boolean(flag) && isFollowed(name)
+  const localKickoff = teamKickoffTooltip(ko, name)
   return (
-    <div className={`team${on ? ' followed' : ''}`}>
+    <div className={`team${on ? ' followed' : ''}`} title={localKickoff || undefined}>
       {flag && (
         <button
           className={`star${on ? ' on' : ''}`}
@@ -92,7 +93,7 @@ export default function MatchCard({ match, tz, feed = 'both', hidden = false }) 
         </div>
 
         <div className="matchup">
-          <Team name={match.t1} />
+          <Team name={match.t1} ko={match.ko} />
           {hasScore ? (
             scoreHidden ? (
               <button
@@ -114,7 +115,7 @@ export default function MatchCard({ match, tz, feed = 'both', hidden = false }) 
           ) : (
             <span className="vs">v</span>
           )}
-          <Team name={match.t2} />
+          <Team name={match.t2} ko={match.ko} />
         </div>
 
         <div className="venue">

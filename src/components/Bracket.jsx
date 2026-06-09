@@ -2,16 +2,16 @@ import { STAGE_LABELS } from '../data/matches.js'
 import { VENUES } from '../data/venues.js'
 import { FLAG_BY_TEAM } from '../data/teams.js'
 import { BRACKET, matchesByNum } from '../utils/bracket.js'
-import { formatTime, tzAbbrev } from '../utils/time.js'
+import { formatTime, tzAbbrev, teamKickoffTooltip } from '../utils/time.js'
 import { useFollow } from '../context/follow.jsx'
 import { useDetail } from '../context/detail.js'
 
-function Side({ name }) {
+function Side({ name, ko }) {
   const flag = FLAG_BY_TEAM[name]
   const { isFollowed } = useFollow()
   const on = Boolean(flag) && isFollowed(name)
   return (
-    <div className={`bx-side${on ? ' followed' : ''}`}>
+    <div className={`bx-side${on ? ' followed' : ''}`} title={teamKickoffTooltip(ko, name) || undefined}>
       <span className="bx-flag">{flag || '·'}</span>
       <span className={flag ? 'bx-team' : 'bx-tbd'}>{name}</span>
     </div>
@@ -38,8 +38,8 @@ function BracketMatch({ num, byNum, tz, hideScores }) {
           {date} · {formatTime(m.ko, tz)} {tzAbbrev(m.ko, tz)}
         </span>
       </div>
-      <Side name={m.t1} />
-      <Side name={m.t2} />
+      <Side name={m.t1} ko={m.ko} />
+      <Side name={m.t2} ko={m.ko} />
       {showScore && (
         <div className="bx-score">
           {m.score[0]}–{m.score[1]}

@@ -3,7 +3,7 @@ import { VENUES } from '../data/venues.js'
 import { FLAG_BY_TEAM } from '../data/teams.js'
 import { STAGE_LABELS } from '../data/matches.js'
 import { GROUP_COLORS, KNOCKOUT_COLOR, colorForMatch } from '../data/groupColors.js'
-import { dayKey, formatTime } from '../utils/time.js'
+import { dayKey, formatTime, teamKickoffTooltip } from '../utils/time.js'
 import { weekStartOf, addDays, weekLabel, weekdayHeader } from '../utils/week.js'
 import { useFollow } from '../context/follow.jsx'
 import { useDetail } from '../context/detail.js'
@@ -39,12 +39,12 @@ function WeekCell({ m, tz, hidden }) {
       onClick={() => openDetail(m)}
     >
       <div className="wc-time">{formatTime(m.ko, tz)}</div>
-      <div className="wc-team">
+      <div className="wc-team" title={teamKickoffTooltip(m.ko, m.t1) || undefined}>
         <span className="wc-flag">{FLAG_BY_TEAM[m.t1] || '•'}</span>
         <span className={cls(m.t1)}>{m.t1}</span>
       </div>
       <div className="wc-mid">{showScore ? `${m.score[0]}–${m.score[1]}` : 'v'}</div>
-      <div className="wc-team">
+      <div className="wc-team" title={teamKickoffTooltip(m.ko, m.t2) || undefined}>
         <span className="wc-flag">{FLAG_BY_TEAM[m.t2] || '•'}</span>
         <span className={cls(m.t2)}>{m.t2}</span>
       </div>

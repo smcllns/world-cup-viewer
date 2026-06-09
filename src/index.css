@@ -587,6 +587,10 @@ select {
   font-size: 0.72rem;
   opacity: 0.85;
 }
+.credit {
+  margin-top: 10px;
+  font-size: 0.78rem;
+}
 .app-footer a { color: var(--accent); }
 
 /* ---------- Score & spoilers ---------- */
