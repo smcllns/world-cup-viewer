@@ -6,6 +6,11 @@ data/source updates, deployment). Newest day on top.
 
 ## 2026-06-09
 
+- **Collapsed filters by default:** the whole filter/search panel (search, stage
+  chips, dropdowns) is now hidden behind a compact "⚙ Filters & Search" toggle so
+  the schedule is front-and-center. The toggle shows an active-filter count with a
+  "Clear all" shortcut, and the panel auto-opens when a shared URL already has
+  filters applied.
 - **Mobile-friendly:** responsive pass for phones/tablets — match cards stack,
   the filter panel stops sticking, the view switcher scrolls horizontally,
   search and selects go full-width (with 16px text to stop iOS zoom-on-focus),

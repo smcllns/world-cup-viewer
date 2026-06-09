@@ -20,20 +20,36 @@ describe('App renders (smoke test)', () => {
     expect(screen.getByRole('button', { name: /Bracket/ })).toBeInTheDocument()
   })
 
-  it('renders the Filters panel with the collapsed search toggle', () => {
+  it('keeps the filter panel and search collapsed by default', () => {
     render(<App />)
-    // Search is hidden by default behind a toggle (regression guard).
-    expect(screen.getByRole('button', { name: /Search/ })).toBeInTheDocument()
+    // Only a compact toggle shows; the panel, search button, and dropdowns are hidden.
+    expect(screen.getByRole('button', { name: /Filters & Search/ })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /🔍 Search/ })).not.toBeInTheDocument()
+    expect(screen.queryByText('Group')).not.toBeInTheDocument()
     expect(screen.queryByPlaceholderText(/team: Mexico/)).not.toBeInTheDocument()
   })
 
-  it('toggles the search box open and filters with a scoped query', () => {
+  it('opens the panel, then the search, and filters with a scoped query', () => {
     render(<App />)
-    fireEvent.click(screen.getByRole('button', { name: /Search/ }))
+    fireEvent.click(screen.getByRole('button', { name: /Filters & Search/ }))
+    fireEvent.click(screen.getByRole('button', { name: /🔍 Search/ }))
     const input = screen.getByPlaceholderText(/team: Mexico/)
     fireEvent.change(input, { target: { value: 'team: Mexico' } })
     // Mexico plays 3 group matches.
     expect(screen.getByText(/^3 matches$/)).toBeInTheDocument()
+  })
+
+  it('shows an active-filter count and "Clear all" when a filter is applied', () => {
+    render(<App />)
+    fireEvent.click(screen.getByRole('button', { name: /Filters & Search/ }))
+    fireEvent.click(screen.getByRole('button', { name: /🔍 Search/ }))
+    fireEvent.change(screen.getByPlaceholderText(/team: Mexico/), {
+      target: { value: 'team: Brazil' },
+    })
+    expect(screen.getByRole('button', { name: /Clear all/ })).toBeInTheDocument()
+    // Clearing resets results back to all 104 matches.
+    fireEvent.click(screen.getByRole('button', { name: /Clear all/ }))
+    expect(screen.queryByRole('button', { name: /Clear all/ })).not.toBeInTheDocument()
   })
 
   it('switches to each view without crashing', () => {

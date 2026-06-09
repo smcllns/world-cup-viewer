@@ -20,6 +20,29 @@ const VIEWS = [
   { id: 'bracket', label: '🏆 Bracket' },
 ]
 
+const INITIAL_FILTERS = {
+  search: '',
+  stages: [],
+  group: 'all',
+  team: 'all',
+  country: 'all',
+  region: 'all',
+  venue: 'all',
+  timeframe: 'all',
+  feed: 'both',
+}
+
+// How many filters are actively narrowing the results (ignores tz & feed view).
+function countActiveFilters(f) {
+  let n = 0
+  if (f.search.trim()) n++
+  n += f.stages.length
+  for (const k of ['group', 'team', 'country', 'region', 'venue', 'timeframe']) {
+    if (f[k] !== 'all') n++
+  }
+  return n
+}
+
 export default function App() {
   const detectedTz = useMemo(detectTimezone, [])
   const initial = useMemo(() => readState(detectedTz), [detectedTz])
@@ -28,6 +51,9 @@ export default function App() {
   const [tz, setTz] = useState(initial.tz)
   const [filters, setFilters] = useState(initial.filters)
   const [hideScores, setHideScores] = useState(initial.hideScores)
+  // Filter panel is collapsed by default; opens automatically if a shared URL
+  // arrives with filters already applied.
+  const [filtersOpen, setFiltersOpen] = useState(() => countActiveFilters(initial.filters) > 0)
   // Per-day spoiler overrides: dayKey -> bool. Undefined means "follow global".
   const [dayOverrides, setDayOverrides] = useState({})
 
@@ -78,6 +104,8 @@ export default function App() {
 
   const toggleDay = (key) =>
     setDayOverrides((o) => ({ ...o, [key]: !dayHidden(key) }))
+
+  const activeCount = useMemo(() => countActiveFilters(filters), [filters])
 
   const filtered = useMemo(() => {
     const parsed = parseQuery(filters.search)
@@ -180,14 +208,34 @@ export default function App() {
       </div>
 
       {(view === 'schedule' || view === 'week') && (
-        <Filters
-          filters={filters}
-          setFilters={setFilters}
-          tz={tz}
-          setTz={setTz}
-          detectedTz={detectedTz}
-          resultCount={filtered.length}
-        />
+        <>
+          <div className="controls-bar">
+            <button
+              className={`filters-toggle${filtersOpen ? ' open' : ''}`}
+              onClick={() => setFiltersOpen((o) => !o)}
+              aria-expanded={filtersOpen}
+            >
+              ⚙ Filters &amp; Search
+              {activeCount > 0 && <span className="filter-count">{activeCount}</span>}
+              <span className="chev">{filtersOpen ? '▲' : '▼'}</span>
+            </button>
+            {activeCount > 0 && (
+              <button className="clear-mini" onClick={() => setFilters(INITIAL_FILTERS)}>
+                Clear all
+              </button>
+            )}
+          </div>
+          {filtersOpen && (
+            <Filters
+              filters={filters}
+              setFilters={setFilters}
+              tz={tz}
+              setTz={setTz}
+              detectedTz={detectedTz}
+              resultCount={filtered.length}
+            />
+          )}
+        </>
       )}
 
       {view === 'week' && (
