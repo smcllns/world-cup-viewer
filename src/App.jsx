@@ -345,6 +345,13 @@ export default function App() {
           Draw (Dec 5, 2025). Filters, timezone &amp; view are saved to the URL — bookmark or share
           it.
         </p>
+        <p className="disclaimer">
+          An unofficial fan-made project. Not affiliated with, endorsed by, or sponsored by FIFA.
+          “World Cup”, team, broadcaster, and tournament names are trademarks of their respective
+          owners. Schedule &amp; results data via{' '}
+          <a href={RESULTS_SOURCE.homepage} target="_blank" rel="noopener noreferrer">OpenFootball</a>{' '}
+          (public domain).
+        </p>
       </footer>
 
       {detailMatch && (

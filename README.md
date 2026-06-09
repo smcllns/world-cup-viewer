@@ -4,7 +4,7 @@ A React + Vite web app showing all 104 matches of the 2026 FIFA World Cup
 (USA · Canada · Mexico) in **your** timezone, with where to watch, host
 city/stadium, a bracket, group standings, and live results.
 
-🔗 **Live:** https://world-cup-viewer.netlify.app
+🔗 **Live:** https://world-cup-viewer.netlify.app · https://ismayc.github.io/world-cup-viewer/
 
 ## Features
 
@@ -41,3 +41,10 @@ npm run preview  # preview the production build
 - **Live results** — OpenFootball `worldcup.json` (public domain).
 
 See [`NEWS.md`](./NEWS.md) for the changelog.
+
+## Disclaimer
+
+An unofficial, non-commercial fan project. **Not affiliated with, endorsed by, or
+sponsored by FIFA.** “World Cup”, and team, broadcaster, and tournament names are
+trademarks of their respective owners. Schedule and results data come from the
+public-domain [OpenFootball](https://github.com/openfootball/worldcup.json) project.

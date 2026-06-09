@@ -6,6 +6,12 @@ data/source updates, deployment). Newest day on top.
 
 ## 2026-06-09
 
+- **Now public + second host:** repository made public; the app is also deployed
+  to GitHub Pages at https://ismayc.github.io/world-cup-viewer/ (alongside
+  Netlify). Build uses a relative base so one artifact works at both a domain
+  root and a sub-path; the Pages deploy runs from CI after tests pass.
+- **Disclaimer added:** footer and README now state the project is unofficial and
+  not affiliated with/endorsed by FIFA, and credit the public-domain data source.
 - **Follow teams:** star any team to highlight it everywhere (schedule, week,
   bracket, standings) and filter to a one-click "⭐ My Teams" view. Saved in the
   browser (localStorage).

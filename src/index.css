@@ -582,6 +582,12 @@ select {
   color: var(--text-faint);
   line-height: 1.5;
 }
+.disclaimer {
+  margin-top: 10px;
+  font-size: 0.72rem;
+  opacity: 0.85;
+}
+.app-footer a { color: var(--accent); }
 
 /* ---------- Score & spoilers ---------- */
 .score {
