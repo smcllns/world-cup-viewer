@@ -6,6 +6,11 @@ data/source updates, deployment). Newest day on top.
 
 ## 2026-06-09
 
+- **Fix "Add to Google Calendar" link:** the Google button built a `cid` from an
+  https URL (percent-encoded), which Google rejects with "check the URL". It now
+  uses a raw `webcal://` cid (`…/calendar/render?cid=webcal://…`) per Google's
+  subscribe-by-URL format, preserving the `?teams=` query for the my-teams feed.
+  Extracted `webcalUrl`/`googleCalendarUrl` into `utils/ics.js` with tests.
 - **Analysis folder:** added `analysis/worst-hours.mjs` (+ generated
   `worst-hours.csv` and a README) — a side analysis of which countries' fans get
   the worst local hours to watch their group-stage games. Reads the app's data

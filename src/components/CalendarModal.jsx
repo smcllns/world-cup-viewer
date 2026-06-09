@@ -1,18 +1,11 @@
 import { useEffect, useState } from 'react'
-import { downloadICSCollection } from '../utils/ics.js'
+import { downloadICSCollection, webcalUrl, googleCalendarUrl } from '../utils/ics.js'
 import { useFollow } from '../context/follow.jsx'
 
 // Subscriptions must point at the deployed feed (a localhost URL can't be
 // subscribed to), so links always use the production origin.
 const PROD = 'https://world-cup-viewer.netlify.app'
 const FEED = `${PROD}/calendar.ics`
-
-function webcal(url) {
-  return url.replace(/^https?:/, 'webcal:')
-}
-function gcal(url) {
-  return `https://calendar.google.com/calendar/r?cid=${encodeURIComponent(url)}`
-}
 
 function SubRow({ label, httpsUrl }) {
   const [copied, setCopied] = useState(false)
@@ -29,8 +22,8 @@ function SubRow({ label, httpsUrl }) {
     <div className="cal-row">
       <span className="cal-row-label">{label}</span>
       <div className="cal-row-actions">
-        <a className="cal-btn-primary" href={webcal(httpsUrl)}>Subscribe</a>
-        <a className="cal-btn-ghost" href={gcal(httpsUrl)} target="_blank" rel="noopener noreferrer">Google</a>
+        <a className="cal-btn-primary" href={webcalUrl(httpsUrl)}>Subscribe</a>
+        <a className="cal-btn-ghost" href={googleCalendarUrl(httpsUrl)} target="_blank" rel="noopener noreferrer">Google</a>
         <button className="cal-btn-ghost" onClick={copy}>{copied ? 'Copied!' : 'Copy URL'}</button>
       </div>
     </div>

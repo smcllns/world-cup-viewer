@@ -123,3 +123,17 @@ export function buildICSCollection(matches, calName = 'World Cup 2026') {
 export function downloadICSCollection(matches, filename = 'wc2026.ics', calName = 'World Cup 2026') {
   downloadText(buildICSCollection(matches, calName), filename)
 }
+
+// Turn an http(s) feed URL into a webcal:// subscription URL (what a calendar
+// app expects to register a live subscription).
+export function webcalUrl(httpsUrl) {
+  return httpsUrl.replace(/^https?:/, 'webcal:')
+}
+
+// A "subscribe in Google Calendar" deep link for an ICS feed. Google's `cid`
+// must be a RAW webcal:// URL — passing an https:// URL or a percent-encoded one
+// makes Google reject it with "check the URL". Our feed URLs use "," (not "&")
+// to separate teams, so the query string survives un-encoded inside `cid`.
+export function googleCalendarUrl(httpsUrl) {
+  return `https://www.google.com/calendar/render?cid=${webcalUrl(httpsUrl)}`
+}

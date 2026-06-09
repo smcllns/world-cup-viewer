@@ -11,7 +11,7 @@ import {
 } from '../src/utils/time.js'
 import { TEAM_TIMEZONES } from '../src/data/teamTimezones.js'
 import { ALL_TEAMS } from '../src/data/teams.js'
-import { buildICS } from '../src/utils/ics.js'
+import { buildICS, webcalUrl, googleCalendarUrl } from '../src/utils/ics.js'
 import { computeGroup } from '../src/utils/standings.js'
 
 describe('week utils', () => {
@@ -109,6 +109,32 @@ describe('ICS export', () => {
     expect(ics).toContain('DTEND:20260719T211500Z') // +2h15m
     expect(ics).toContain('LOCATION:MetLife Stadium')
     expect(ics).toContain('END:VCALENDAR')
+  })
+})
+
+describe('calendar subscription links', () => {
+  const FEED = 'https://world-cup-viewer.netlify.app/calendar.ics'
+
+  it('webcalUrl swaps the scheme to webcal', () => {
+    expect(webcalUrl(FEED)).toBe('webcal://world-cup-viewer.netlify.app/calendar.ics')
+    expect(webcalUrl('http://x/y.ics')).toBe('webcal://x/y.ics')
+  })
+
+  it('googleCalendarUrl uses a raw webcal:// cid (not https, not percent-encoded)', () => {
+    const link = googleCalendarUrl(FEED)
+    expect(link).toBe(
+      'https://www.google.com/calendar/render?cid=webcal://world-cup-viewer.netlify.app/calendar.ics',
+    )
+    // The old bug: an https/encoded cid that Google rejects with "check the URL".
+    expect(link).not.toContain('cid=https')
+    expect(link).not.toContain('%3A')
+  })
+
+  it('preserves the ?teams= query string for the my-teams feed', () => {
+    const myFeed = `${FEED}?teams=Mexico,Brazil`
+    const link = googleCalendarUrl(myFeed)
+    expect(link).toContain('cid=webcal://world-cup-viewer.netlify.app/calendar.ics?teams=Mexico,Brazil')
+    expect(link).not.toContain('%3F') // the "?" stays raw so Google keeps the query
   })
 })
 
