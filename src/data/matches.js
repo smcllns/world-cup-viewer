@@ -115,7 +115,7 @@ export const MATCHES = [
   { num: 72, stage: 'Group', group: 'J', t1: 'Jordan', t2: 'Argentina', venue: 'att', ko: '2026-06-27T22:00:00-04:00' },
 
   // ===== ROUND OF 32 =====
-  { num: 73, stage: 'R32', t1: 'Runner-up Group A', t2: 'Runner-up Group B', venue: 'sofi', ko: '2026-06-28T13:00:00-04:00' },
+  { num: 73, stage: 'R32', t1: 'Runner-up Group A', t2: 'Runner-up Group B', venue: 'sofi', ko: '2026-06-28T15:00:00-04:00' },
   { num: 74, stage: 'R32', t1: 'Winner Group E', t2: '3rd A/B/C/D/F', venue: 'gillette', ko: '2026-06-29T16:30:00-04:00' },
   { num: 76, stage: 'R32', t1: 'Winner Group C', t2: 'Runner-up Group F', venue: 'nrg', ko: '2026-06-29T13:00:00-04:00' },
   { num: 75, stage: 'R32', t1: 'Winner Group F', t2: 'Runner-up Group C', venue: 'bbva', ko: '2026-06-29T19:00:00-04:00' },
@@ -125,7 +125,7 @@ export const MATCHES = [
   { num: 80, stage: 'R32', t1: 'Winner Group L', t2: '3rd E/H/I/J/K', venue: 'mercedes', ko: '2026-07-01T12:00:00-04:00' },
   { num: 82, stage: 'R32', t1: 'Winner Group G', t2: '3rd A/E/H/I/J', venue: 'lumen', ko: '2026-07-01T13:00:00-04:00' },
   { num: 81, stage: 'R32', t1: 'Winner Group D', t2: '3rd B/E/F/I/J', venue: 'levis', ko: '2026-07-01T17:00:00-04:00' },
-  { num: 84, stage: 'R32', t1: 'Winner Group H', t2: 'Runner-up Group J', venue: 'sofi', ko: '2026-07-02T12:00:00-04:00' },
+  { num: 84, stage: 'R32', t1: 'Winner Group H', t2: 'Runner-up Group J', venue: 'sofi', ko: '2026-07-02T15:00:00-04:00' },
   { num: 83, stage: 'R32', t1: 'Runner-up Group K', t2: 'Runner-up Group L', venue: 'bmo', ko: '2026-07-02T19:00:00-04:00' },
   { num: 85, stage: 'R32', t1: 'Winner Group B', t2: '3rd E/F/G/I/J', venue: 'bcplace', ko: '2026-07-02T20:00:00-04:00' },
   { num: 88, stage: 'R32', t1: 'Runner-up Group D', t2: 'Runner-up Group G', venue: 'att', ko: '2026-07-03T13:00:00-04:00' },
@@ -144,7 +144,7 @@ export const MATCHES = [
 
   // ===== QUARTERFINALS =====
   { num: 97, stage: 'QF', t1: 'Winner Match 89', t2: 'Winner Match 90', venue: 'gillette', ko: '2026-07-09T16:00:00-04:00' },
-  { num: 98, stage: 'QF', t1: 'Winner Match 93', t2: 'Winner Match 94', venue: 'sofi', ko: '2026-07-10T12:00:00-04:00' },
+  { num: 98, stage: 'QF', t1: 'Winner Match 93', t2: 'Winner Match 94', venue: 'sofi', ko: '2026-07-10T15:00:00-04:00' },
   { num: 99, stage: 'QF', t1: 'Winner Match 91', t2: 'Winner Match 92', venue: 'hardrock', ko: '2026-07-11T17:00:00-04:00' },
   { num: 100, stage: 'QF', t1: 'Winner Match 95', t2: 'Winner Match 96', venue: 'arrowhead', ko: '2026-07-11T20:00:00-04:00' },
 

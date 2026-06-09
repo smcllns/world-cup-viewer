@@ -6,6 +6,10 @@ data/source updates, deployment). Newest day on top.
 
 ## 2026-06-09
 
+- **Fix SoFi knockout kickoff times:** matches 73 (R32, Jun 28), 84 (R32,
+  Jul 2) and 98 (QF, Jul 10) at SoFi Stadium were stored 2–3 hours early; all
+  three are 12:00 PM PT / 3:00 PM ET per the official schedule (now
+  `15:00-04:00`). The five SoFi group games were already correct.
 - **CI action upgrades:** bumped GitHub Actions to their Node-24 majors
   (checkout v6, setup-node v6, configure-pages v6, upload-pages-artifact v5,
   deploy-pages v5) ahead of GitHub forcing Node 20 actions to Node 24 on
