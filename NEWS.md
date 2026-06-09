@@ -23,6 +23,9 @@ data/source updates, deployment). Newest day on top.
   `group: C`, `stage: Final`, `region: Western` — and combines multiple tokens
   (`team: Brazil stage: group`). Plain text still does a broad match. One-click
   example chips make the syntax discoverable.
+- **Collapsible search:** the search box is hidden behind a 🔍 Search toggle by
+  default; opening reveals the input + example chips, closing clears the query.
+  A query restored from the URL opens it automatically.
 - **Add to calendar:** per-match `.ics` download (UTC times, venue, broadcast
   info) for Apple/Google/Outlook calendars.
 - **Bracket view:** two-sided knockout bracket (R32 → Final) plus third-place

@@ -98,12 +98,40 @@ select:focus {
   outline-offset: 0;
 }
 
+.search-toggle {
+  padding: 11px 16px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--text-dim);
+  font-size: 0.92rem;
+  cursor: pointer;
+}
+.search-toggle:hover {
+  border-color: var(--accent);
+  color: var(--text);
+}
+.search-close {
+  padding: 0 13px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--text-dim);
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+.search-close:hover {
+  border-color: var(--accent-2);
+  color: var(--accent-2);
+}
+
 .tz-picker {
   display: flex;
   flex-direction: column;
   gap: 4px;
   font-size: 0.78rem;
   color: var(--text-dim);
+  margin-left: auto;
 }
 
 .field {

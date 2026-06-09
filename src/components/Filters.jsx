@@ -18,6 +18,14 @@ const VENUE_OPTIONS = Object.entries(VENUES)
 export default function Filters({ filters, setFilters, tz, setTz, detectedTz, resultCount }) {
   const update = (patch) => setFilters((f) => ({ ...f, ...patch }))
 
+  // Search is hidden by default; open it if a query is already active (e.g.
+  // restored from the URL). Closing it clears the query.
+  const [searchOpen, setSearchOpen] = useState(() => Boolean(filters.search))
+  const closeSearch = () => {
+    setSearchOpen(false)
+    update({ search: '' })
+  }
+
   const toggleStage = (stage) =>
     setFilters((f) => {
       const stages = f.stages.includes(stage)
@@ -42,13 +50,25 @@ export default function Filters({ filters, setFilters, tz, setTz, detectedTz, re
   return (
     <div className="filters">
       <div className="filters-row filters-top">
-        <input
-          className="search"
-          type="search"
-          placeholder='Search — try "team: Mexico" or "city: Dallas"'
-          value={filters.search}
-          onChange={(e) => update({ search: e.target.value })}
-        />
+        {searchOpen ? (
+          <>
+            <input
+              className="search"
+              type="search"
+              autoFocus
+              placeholder='Search — try "team: Mexico" or "city: Dallas"'
+              value={filters.search}
+              onChange={(e) => update({ search: e.target.value })}
+            />
+            <button className="search-close" onClick={closeSearch} title="Hide search">
+              ✕
+            </button>
+          </>
+        ) : (
+          <button className="search-toggle" onClick={() => setSearchOpen(true)}>
+            🔍 Search
+          </button>
+        )}
         <label className="tz-picker">
           <span>🕒 Timezone</span>
           <select value={tz} onChange={(e) => setTz(e.target.value)}>
@@ -62,17 +82,19 @@ export default function Filters({ filters, setFilters, tz, setTz, detectedTz, re
         </label>
       </div>
 
-      <div className="search-hints">
-        <span className="hint-label">Try:</span>
-        {SEARCH_EXAMPLES.map((ex) => (
-          <button key={ex} className="hint-chip" onClick={() => update({ search: ex })}>
-            {ex}
-          </button>
-        ))}
-        <span className="hint-note">
-          fields: team · city · stadium · country · group · stage · region
-        </span>
-      </div>
+      {searchOpen && (
+        <div className="search-hints">
+          <span className="hint-label">Try:</span>
+          {SEARCH_EXAMPLES.map((ex) => (
+            <button key={ex} className="hint-chip" onClick={() => update({ search: ex })}>
+              {ex}
+            </button>
+          ))}
+          <span className="hint-note">
+            fields: team · city · stadium · country · group · stage · region
+          </span>
+        </div>
+      )}
 
       <div className="stage-chips">
         {STAGE_ORDER.map((s) => (
