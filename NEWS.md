@@ -6,6 +6,10 @@ data/source updates, deployment). Newest day on top.
 
 ## 2026-06-09
 
+- **README refresh:** documented the newer features (home-country hover times,
+  follow teams, next-match bar, week view, match detail, calendar subscription,
+  theme) and added a "Schedule accuracy" section describing the fixture-based
+  validation; added `npm test` and a credits line.
 - **Bracket, draw & timezone validation:** verified the knockout bracket wiring
   (all 32 group-position slots, third-place routing, and Winner/Loser-Match
   progression) against the Wikipedia bracket; the group draw against NBC Sports;

@@ -10,15 +10,29 @@ city/stadium, a bracket, group standings, and live results.
 
 - **Your timezone** — kickoff times auto-convert to your detected timezone
   (switchable to 20+), with stadium-local time shown when it differs.
+- **Hover for home-country time** — hover a team in any view to see when the
+  match kicks off back home; countries spanning multiple time zones (USA, Brazil,
+  Australia, …) list each distinct local time.
+- **Follow teams** — star any team to highlight it everywhere and filter to a
+  one-click "⭐ My Teams" view (saved in your browser).
+- **Next-match bar** — a live countdown to the next kickoff (prioritising your
+  followed teams, or "Live now"), with a jump-to-match button.
+- **Four views** — chronological schedule, a Sunday–Saturday week calendar,
+  group standings, and the knockout bracket.
+- **Match detail** — click any match for full venue/time/broadcast info and a
+  minute-by-minute goal timeline once results are in.
 - **How to watch (US)** — English (FOX/FS1) & Spanish (Telemundo/Universo) TV
   and streaming per match; free over-the-air channels flagged.
 - **Venues** — all 16 host stadiums with city, country, and region.
 - **Filtering** — search, stage, group, team, host country, region,
   city/stadium, timeframe, and broadcast language.
-- **Add to calendar** — per-match `.ics` download.
+- **Group standings & qualification** — all 12 tables with official tie-breakers,
+  who advances, and the 8 best third-placed teams.
 - **Bracket** — two-sided knockout bracket that fills in as teams resolve.
-- **Group standings** — all 12 tables, computed from results.
+- **Add to calendar** — per-match `.ics` download, plus a `webcal://`
+  subscription feed (all matches or just your teams) that auto-updates.
 - **Spoiler-free mode** — hide scores globally, per day, or per match.
+- **Light/dark theme** — follows your system preference, with no flash on load.
 - **Shareable URLs** — view, timezone, spoiler mode, and filters persist to the
   query string.
 - **Live results** — scores from the [OpenFootball](https://github.com/openfootball/worldcup.json)
@@ -31,16 +45,37 @@ npm install
 npm run dev      # http://localhost:5173
 npm run build    # production build to dist/
 npm run preview  # preview the production build
+npm test         # run the Vitest suite
 ```
+
+Every push runs the tests + build in GitHub Actions; pushes to `main` deploy to
+Netlify and GitHub Pages only if they pass.
+
+## Schedule accuracy
+
+The schedule data is validated against external sources and frozen into
+[`test/fixtures/official-kickoffs.js`](./test/fixtures/official-kickoffs.js).
+The test suite (75 tests) asserts every match's kickoff (to the minute, in
+Eastern Time), venue, knockout-bracket slot, and group-draw assignment matches
+the official schedule, plus structural invariants (complete round-robins,
+simultaneous final-matchday kickoffs, no team double-booked, valid bracket
+references). Sources: the [Wikipedia knockout-stage table](https://en.wikipedia.org/wiki/2026_FIFA_World_Cup_knockout_stage)
+(kickoffs + bracket), Yahoo Sports & MLSsoccer (group times/venues), and NBC
+Sports (group draw).
 
 ## Data sources
 
 - **Schedule, groups, venues** — FIFA Final Draw (Dec 5, 2025) and official
-  match schedule.
+  match schedule (see *Schedule accuracy* above).
 - **Broadcast** — FOX Sports / NBCUniversal (Telemundo) US rights.
 - **Live results** — OpenFootball `worldcup.json` (public domain).
 
 See [`NEWS.md`](./NEWS.md) for the changelog.
+
+## Credits
+
+Created by [Chester Ismay](https://chester.rbind.io). Source on
+[GitHub](https://github.com/ismayc/world-cup-viewer).
 
 ## Disclaimer
 
