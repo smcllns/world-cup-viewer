@@ -642,6 +642,15 @@ select {
 .results-updated, .results-source { color: var(--text-faint); font-size: 0.76rem; }
 .results-source a { color: var(--accent); text-decoration: none; }
 .results-source a:hover { text-decoration: underline; }
+.results-live {
+  font-size: 0.76rem; font-weight: 700; color: var(--live);
+  animation: pulse 1.4s infinite;
+}
+.score-check {
+  margin-top: 4px; text-align: center;
+  font-size: 0.66rem; font-weight: 600; color: var(--text-faint);
+}
+.score-check-warn { color: var(--accent-2); font-weight: 700; }
 .results-auto {
   display: inline-flex; align-items: center; gap: 4px;
   font-size: 0.76rem; color: var(--text-faint); cursor: pointer;

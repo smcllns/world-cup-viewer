@@ -34,7 +34,7 @@ export function isRealTeam(name) {
   return Boolean(FLAG_BY_TEAM[normalizeTeam(name)])
 }
 
-function pairKey(a, b) {
+export function pairKey(a, b) {
   return 'pair:' + [a, b].sort().join('|')
 }
 
@@ -54,6 +54,16 @@ export function matchKey(match) {
   if (match.stage === '3rd') return 'stage:3rd'
   if (match.stage === 'Final') return 'stage:Final'
   return 'num:' + match.num
+}
+
+// Final score for one of our matches, oriented by team name, for the score
+// reconciler. OpenFootball only ever holds recorded (final) scores, so a present
+// score is authoritative. Mirrors the getters in espn.js / thesportsdb.js.
+export function openFootballFinalScore(match, ofMap) {
+  if (!ofMap) return null
+  const rec = ofMap.get(matchKey(match))
+  if (!rec?.score?.ft) return null
+  return { home: rec.home, away: rec.away, ft: rec.score.ft }
 }
 
 // OpenFootball score shape: { ft: [home, away], ht: [...], et: [...], p: [...] }.

@@ -82,8 +82,15 @@ export default function MatchCard({ match, tz, feed = 'both', hidden = false }) 
       <div className="card-time">
         <div className="kickoff">{viewerTime}</div>
         <div className="kickoff-tz">{viewerAbbr}</div>
-        {status === 'live' && <div className="badge-live">● LIVE</div>}
-        {status === 'finished' && <div className="badge-done">FT</div>}
+        {match.live ? (
+          // Real in-match status from ESPN (clock/HT) beats the time-based guess.
+          <div className="badge-live" title={match.live.detail || 'Live'}>
+            ● {match.live.clock || 'LIVE'}
+          </div>
+        ) : (
+          status === 'live' && <div className="badge-live">● LIVE</div>
+        )}
+        {status === 'finished' && !match.live && <div className="badge-done">FT</div>}
       </div>
 
       <div className="card-body">
@@ -117,6 +124,20 @@ export default function MatchCard({ match, tz, feed = 'both', hidden = false }) 
           )}
           <Team name={match.t2} ko={match.ko} />
         </div>
+
+        {/* Cross-source confirmation of the final score (OpenFootball / ESPN /
+            TheSportsDB). Hidden in spoiler mode along with the score itself. */}
+        {match.scoreCheck && !scoreHidden && (
+          match.scoreCheck.agree ? (
+            <div className="score-check" title={`Final score confirmed by ${match.scoreCheck.count} independent sources`}>
+              ✓ confirmed by {match.scoreCheck.count} sources
+            </div>
+          ) : (
+            <div className="score-check score-check-warn" title="Sources report different final scores">
+              ⚠ sources disagree on this score
+            </div>
+          )
+        )}
 
         <div className="venue">
           <span className="venue-flag">{venue.countryFlag}</span>

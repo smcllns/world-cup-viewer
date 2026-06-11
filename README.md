@@ -35,8 +35,12 @@ city/stadium, a bracket, group standings, and live results.
 - **Light/dark theme** — follows your system preference, with no flash on load.
 - **Shareable URLs** — view, timezone, spoiler mode, and filters persist to the
   query string.
-- **Live results** — scores from the [OpenFootball](https://github.com/openfootball/worldcup.json)
-  public JSON feed (no API key), merged in and auto-refreshed.
+- **Live results** — final scores from the [OpenFootball](https://github.com/openfootball/worldcup.json)
+  public JSON feed (no API key), merged in and auto-refreshed, with a live
+  in-match score + clock overlaid from [ESPN](https://www.espn.com/soccer/)
+  while games are underway, and final scores cross-checked against a third
+  source ([TheSportsDB](https://www.thesportsdb.com/)) — each card shows how many
+  independent sources confirm the result.
 
 ## Develop
 
@@ -68,7 +72,18 @@ Sports (group draw).
 - **Schedule, groups, venues** — FIFA Final Draw (Dec 5, 2025) and official
   match schedule (see *Schedule accuracy* above).
 - **Broadcast** — FOX Sports / NBCUniversal (Telemundo) US rights.
-- **Live results** — OpenFootball `worldcup.json` (public domain).
+- **Results (source of record)** — OpenFootball `worldcup.json` (public domain),
+  post-match final scores and goal timelines.
+- **Live in-match scores** — ESPN's public scoreboard API (free, no API key,
+  CORS-open). Used only while a match is underway, or just finished and
+  OpenFootball hasn't posted yet; OpenFootball always wins once it has the score.
+- **Backup & score cross-check** — [TheSportsDB](https://www.thesportsdb.com/)
+  (free, CORS-open, public test key). An independent third source of final
+  scores. Final scores are reconciled across all three feeds: each card shows
+  "✓ confirmed by N sources", or "⚠ sources disagree" when they don't, and
+  `npm run check:feed` reports any mismatch. (worldcupjson.net was evaluated for
+  this role and rejected — no 2026 data and no CORS, so a browser-only app can
+  neither read nor validate against it.)
 
 See [`NEWS.md`](./NEWS.md) for the changelog.
 
@@ -82,4 +97,6 @@ Created by [Chester Ismay](https://chester.rbind.io). Source on
 An unofficial, non-commercial fan project. **Not affiliated with, endorsed by, or
 sponsored by FIFA.** “World Cup”, and team, broadcaster, and tournament names are
 trademarks of their respective owners. Schedule and results data come from the
-public-domain [OpenFootball](https://github.com/openfootball/worldcup.json) project.
+public-domain [OpenFootball](https://github.com/openfootball/worldcup.json) project;
+live in-match scores come from [ESPN](https://www.espn.com/soccer/); final scores
+are cross-checked against [TheSportsDB](https://www.thesportsdb.com/).

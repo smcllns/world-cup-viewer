@@ -4,6 +4,45 @@ A dated changelog for the World Cup 2026 Schedule Viewer. Each heading is a
 calendar day; bullet points capture every change made that day (features, fixes,
 data/source updates, deployment). Newest day on top.
 
+## 2026-06-11
+
+- **TheSportsDB as a third source + score cross-check:** added
+  `src/services/thesportsdb.js` (free, CORS-open, public test key; FIFA World Cup
+  league 4429, season 2026) as an independent backup source of final scores.
+  Refactored the validator into a source-agnostic `src/services/reconcile.js`
+  (`crossCheck`, `annotateScoreChecks`, `reconcileScores`), with each adapter now
+  exposing a `*FinalScore` getter (`openFootballFinalScore`, `espnFinalScore`,
+  `sdbFinalScore`). The app fetches all three feeds in parallel and annotates
+  every final with how many sources confirm it: MatchCard shows "✓ confirmed by
+  N sources" or "⚠ sources disagree", and `npm run check:feed` now reports
+  three-way disagreements. On-page attribution updated (results bar + footer) to
+  credit TheSportsDB as the cross-check. worldcupjson.net stays rejected (no 2026
+  data, no CORS).
+- **Live in-match scores via ESPN:** added `src/services/espn.js` — a live
+  overlay on top of OpenFootball. `fetchLive()` reads ESPN's public scoreboard
+  (free, no key, CORS-open) and `applyLive()` overlays the running score + clock
+  onto the OpenFootball-merged schedule, keyed by team pair (groups) or kickoff
+  instant (knockouts, even before teams resolve). OpenFootball stays the source
+  of record: once it has a score, ESPN defers. MatchCard now shows ESPN's real
+  clock/HT in the LIVE badge instead of a time-based guess, and the results bar
+  shows an "N live now" indicator. App fetches both sources in parallel via
+  `Promise.allSettled` so ESPN is best-effort. On-page attribution updated in
+  both the results bar and the footer disclaimer.
+- **ESPN as cross-validator (not worldcupjson.net):** `reconcileScores()` flags
+  matches where OpenFootball and ESPN disagree on a final score; wired into
+  `npm run check:feed`. worldcupjson.net was evaluated for this backup/validator
+  role and rejected — it returns 2022 data for 2026 queries and serves no CORS
+  header, so a frontend-only app can neither consume nor validate against it.
+- **Feed-freshness check:** evaluated switching the live-results source to
+  worldcupjson.net — rejected, it has no 2026 data (queries return 2022) and
+  relies on legacy JSONP, not CORS. Stayed on OpenFootball, whose 2026 data file
+  is live and well-formed; the stale README was a red herring. To guard the real
+  risk (scores lagging once games start), added `scripts/check-feed-freshness.mjs`
+  (`npm run check:feed`): reuses `fetchResults`/`matchKey`/`MATCHES` to flag any
+  match that finished ≥ `STALE_HOURS` ago but still has no score in the feed.
+  Wired it to a new hourly `feed-freshness` GitHub Action so a lagging feed
+  surfaces as a failed run (email) instead of stale scores on the site.
+
 ## 2026-06-09
 
 - **Fix "Add to Google Calendar" link:** the Google button built a `cid` from an

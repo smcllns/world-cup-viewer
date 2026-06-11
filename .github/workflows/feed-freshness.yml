@@ -1,0 +1,28 @@
+name: Feed freshness
+
+# Early warning that the OpenFootball 2026 feed is committing match scores.
+# Runs hourly during the tournament window; the job fails (→ GitHub emails you)
+# only when a match that finished >= STALE_HOURS ago still has no score.
+# Manually runnable any time via the Actions tab ("Run workflow").
+
+on:
+  schedule:
+    - cron: '17 * * * *' # hourly, on the :17
+  workflow_dispatch:
+
+jobs:
+  check:
+    name: Check OpenFootball 2026 feed
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      # The script exits 0 before the first match finishes and after every
+      # finished match has a score, so the job is green outside the tournament.
+      - run: npm run check:feed
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # raises the GitHub API rate limit

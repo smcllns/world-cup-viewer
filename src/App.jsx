@@ -12,7 +12,10 @@ import CalendarModal from './components/CalendarModal.jsx'
 import { detectTimezone, formatDateLong, dayKey, matchStatus } from './utils/time.js'
 import { readState, writeState } from './utils/urlState.js'
 import { parseQuery, matchesSearch } from './utils/search.js'
-import { fetchResults, applyResults, RESULTS_SOURCE } from './services/results.js'
+import { fetchResults, applyResults, RESULTS_SOURCE, openFootballFinalScore } from './services/results.js'
+import { fetchLive, applyLive, LIVE_SOURCE, espnFinalScore } from './services/espn.js'
+import { fetchBackup, BACKUP_SOURCE, sdbFinalScore } from './services/thesportsdb.js'
+import { annotateScoreChecks } from './services/reconcile.js'
 import { useFollow } from './context/follow.jsx'
 import { DetailContext } from './context/detail.js'
 
@@ -83,8 +86,13 @@ export default function App() {
   // Per-day spoiler overrides: dayKey -> bool. Undefined means "follow global".
   const [dayOverrides, setDayOverrides] = useState({})
 
-  // Live results fetched from the API and merged into the static schedule.
+  // Results merged into the static schedule from three independent sources:
+  //   • OpenFootball (`results`) — source of record (post-match final scores).
+  //   • ESPN (`live`) — best-effort live overlay (running score + clock).
+  //   • TheSportsDB (`backup`) — best-effort backup + final-score cross-check.
   const [results, setResults] = useState(null)
+  const [live, setLive] = useState(null)
+  const [backup, setBackup] = useState(null)
   const [resultsState, setResultsState] = useState('loading') // loading | ok | error
   const [updatedAt, setUpdatedAt] = useState(null)
   const [autoRefresh, setAutoRefresh] = useState(true)
@@ -95,13 +103,21 @@ export default function App() {
     const ctrl = new AbortController()
     abortRef.current = ctrl
     setResultsState((s) => (s === 'ok' ? 'ok' : 'loading'))
-    try {
-      const map = await fetchResults(ctrl.signal)
-      setResults(map)
+    // Fetch all three together; only OpenFootball gates the status bar — ESPN and
+    // TheSportsDB are best-effort and never fail it.
+    const [of, espn, sdb] = await Promise.allSettled([
+      fetchResults(ctrl.signal),
+      fetchLive(ctrl.signal),
+      fetchBackup(ctrl.signal),
+    ])
+    if (espn.status === 'fulfilled') setLive(espn.value)
+    if (sdb.status === 'fulfilled') setBackup(sdb.value)
+    if (of.status === 'fulfilled') {
+      setResults(of.value)
       setResultsState('ok')
       setUpdatedAt(Date.now())
-    } catch (err) {
-      if (err.name !== 'AbortError') setResultsState('error')
+    } else if (of.reason?.name !== 'AbortError') {
+      setResultsState('error')
     }
   }, [])
 
@@ -116,9 +132,20 @@ export default function App() {
     return () => clearInterval(id)
   }, [autoRefresh, loadResults])
 
-  // Merge API scores / resolved knockout teams into the schedule (immutably).
-  const matches = useMemo(() => applyResults(MATCHES, results), [results])
+  // Merge into the schedule (immutably): OpenFootball first (source of record),
+  // overlay ESPN's live/just-finished scores where OpenFootball has none, then
+  // annotate each final with how many independent sources confirm it.
+  const matches = useMemo(() => {
+    const merged = applyLive(applyResults(MATCHES, results), live)
+    const sources = [
+      results && { name: RESULTS_SOURCE.name, score: (m) => openFootballFinalScore(m, results) },
+      live && { name: LIVE_SOURCE.name, score: (m) => espnFinalScore(m, live) },
+      backup && { name: BACKUP_SOURCE.name, score: (m) => sdbFinalScore(m, backup) },
+    ].filter(Boolean)
+    return annotateScoreChecks(merged, sources)
+  }, [results, live, backup])
   const finishedCount = useMemo(() => matches.filter((m) => m.score).length, [matches])
+  const liveCount = useMemo(() => matches.filter((m) => m.live).length, [matches])
 
   // Keep the URL in sync with shareable state.
   useEffect(() => {
@@ -220,6 +247,9 @@ export default function App() {
           {resultsState === 'ok' && finishedCount > 0 && `${finishedCount} match${finishedCount === 1 ? '' : 'es'} with scores`}
           {resultsState === 'ok' && finishedCount === 0 && 'No results yet — kickoff is June 11, 2026'}
         </span>
+        {liveCount > 0 && (
+          <span className="results-live">● {liveCount} live now</span>
+        )}
         {updatedAt && resultsState === 'ok' && (
           <span className="results-updated">
             updated{' '}
@@ -231,9 +261,17 @@ export default function App() {
           </span>
         )}
         <span className="results-source">
-          via{' '}
+          scores via{' '}
           <a href={RESULTS_SOURCE.homepage} target="_blank" rel="noopener noreferrer">
             {RESULTS_SOURCE.name}
+          </a>
+          {' · live via '}
+          <a href={LIVE_SOURCE.homepage} target="_blank" rel="noopener noreferrer">
+            {LIVE_SOURCE.name}
+          </a>
+          {' · checked vs '}
+          <a href={BACKUP_SOURCE.homepage} target="_blank" rel="noopener noreferrer">
+            {BACKUP_SOURCE.name}
           </a>
         </span>
         <label className="results-auto">
@@ -350,7 +388,10 @@ export default function App() {
           “World Cup”, team, broadcaster, and tournament names are trademarks of their respective
           owners. Schedule &amp; results data via{' '}
           <a href={RESULTS_SOURCE.homepage} target="_blank" rel="noopener noreferrer">OpenFootball</a>{' '}
-          (public domain).
+          (public domain); live in-match scores via{' '}
+          <a href={LIVE_SOURCE.homepage} target="_blank" rel="noopener noreferrer">ESPN</a>; final
+          scores cross-checked against{' '}
+          <a href={BACKUP_SOURCE.homepage} target="_blank" rel="noopener noreferrer">TheSportsDB</a>.
         </p>
         <p className="credit">
           Created by{' '}
