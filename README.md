@@ -19,8 +19,9 @@ city/stadium, a bracket, group standings, and live results.
   followed teams, or "Live now"), with a jump-to-match button.
 - **Four views** — chronological schedule, a Sunday–Saturday week calendar,
   group standings, and the knockout bracket.
-- **Match detail** — click any match for full venue/time/broadcast info and a
-  minute-by-minute goal timeline once results are in.
+- **Match detail** — click any match for full venue/time/broadcast info, the live
+  status/clock, and a minute-by-minute event timeline (goals ⚽, cards 🟨🟥,
+  subs 🔁) once a match is underway.
 - **How to watch (US)** — English (FOX/FS1) & Spanish (Telemundo/Universo) TV
   and streaming per match; free over-the-air channels flagged.
 - **Venues** — all 16 host stadiums with city, country, and region.
@@ -34,7 +35,9 @@ city/stadium, a bracket, group standings, and live results.
 - **Spoiler-free mode** — hide scores globally, per day, or per match.
 - **Light/dark theme** — follows your system preference, with no flash on load.
 - **Shareable URLs** — view, timezone, spoiler mode, and filters persist to the
-  query string.
+  query string; links unfurl with a title/description preview in chat apps.
+- **Accessible** — keyboard-navigable, focus-trapped modals that restore focus on
+  close, and screen-reader labels on live/score badges.
 - **Live results** — final scores from the [OpenFootball](https://github.com/openfootball/worldcup.json)
   public JSON feed (no API key), merged in and auto-refreshed, with a live
   in-match score + clock (incl. "HT"/stoppage) overlaid from
