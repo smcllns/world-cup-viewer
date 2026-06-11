@@ -1,0 +1,7 @@
+# Netlify response headers (applied to the deployed dist/). GitHub Pages ignores
+# this file and already serves the correct types.
+
+# Serve the web app manifest with its proper MIME type (Netlify otherwise sends
+# application/octet-stream, which logs a console warning).
+/manifest.webmanifest
+  Content-Type: application/manifest+json; charset=utf-8
