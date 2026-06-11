@@ -3,7 +3,7 @@ import { VENUES } from '../data/venues.js'
 import { FLAG_BY_TEAM } from '../data/teams.js'
 import { STAGE_LABELS } from '../data/matches.js'
 import { US_BROADCAST } from '../data/broadcast.js'
-import { formatTime, formatDateLong, tzAbbrev, matchStatus, teamKickoffTooltip } from '../utils/time.js'
+import { formatTime, formatDateLong, tzAbbrev, liveState, teamKickoffTooltip } from '../utils/time.js'
 import { downloadICS } from '../utils/ics.js'
 import { useFollow } from '../context/follow.jsx'
 import { useModalA11y } from '../hooks/useModalA11y.js'
@@ -66,7 +66,7 @@ export default function MatchDetail({ match, tz, hideScores, onClose }) {
   if (!match) return null
   const venue = VENUES[match.venue]
   const stage = match.stage === 'Group' ? `Group ${match.group}` : STAGE_LABELS[match.stage]
-  const status = matchStatus(match.ko)
+  const status = liveState(match)
   const hasScore = Array.isArray(match.score)
   const scoreHidden = hasScore && hideScores && !reveal
 

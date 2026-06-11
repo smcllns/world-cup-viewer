@@ -6,6 +6,7 @@ import {
   dayKey,
   formatTime,
   matchStatus,
+  liveState,
   teamLocalKickoffs,
   teamKickoffTooltip,
 } from '../src/utils/time.js'
@@ -49,6 +50,18 @@ describe('time utils', () => {
     expect(matchStatus('2026-06-11T19:00:00Z', Date.parse('2026-06-10T00:00:00Z'))).toBe('upcoming')
     expect(matchStatus('2026-06-11T19:00:00Z', Date.parse('2026-06-11T19:30:00Z'))).toBe('live')
     expect(matchStatus('2026-06-11T19:00:00Z', Date.parse('2026-06-12T00:00:00Z'))).toBe('finished')
+  })
+
+  it('liveState prefers feed data over the clock', () => {
+    const ko = '2026-06-11T19:00:00Z'
+    const duringWindow = Date.parse('2026-06-11T19:30:00Z') // time-based "live"
+    // A finished match (has a score) reads finished even inside the live window.
+    expect(liveState({ ko, score: [2, 0] }, duringWindow)).toBe('finished')
+    // ESPN's live flag wins regardless of clock.
+    expect(liveState({ ko, score: [1, 0], live: { clock: "HT" } }, duringWindow)).toBe('live')
+    // No feed data yet -> fall back to the time-based guess.
+    expect(liveState({ ko }, duringWindow)).toBe('live')
+    expect(liveState({ ko }, Date.parse('2026-06-10T00:00:00Z'))).toBe('upcoming')
   })
 })
 

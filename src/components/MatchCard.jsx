@@ -3,7 +3,7 @@ import { VENUES } from '../data/venues.js'
 import { FLAG_BY_TEAM } from '../data/teams.js'
 import { STAGE_LABELS } from '../data/matches.js'
 import { US_BROADCAST } from '../data/broadcast.js'
-import { formatTime, tzAbbrev, matchStatus, teamKickoffTooltip } from '../utils/time.js'
+import { formatTime, tzAbbrev, liveState, teamKickoffTooltip } from '../utils/time.js'
 import { downloadICS } from '../utils/ics.js'
 import { useFollow } from '../context/follow.jsx'
 import { useDetail } from '../context/detail.js'
@@ -64,7 +64,7 @@ export default function MatchCard({ match, tz, feed = 'both', hidden = false }) 
   const [revealScore, setRevealScore] = useState(false)
   const openDetail = useDetail()
   const venue = VENUES[match.venue]
-  const status = matchStatus(match.ko)
+  const status = liveState(match)
   const viewerTime = formatTime(match.ko, tz)
   const viewerAbbr = tzAbbrev(match.ko, tz)
   const localTime = formatTime(match.ko, venue.tz)
@@ -84,15 +84,15 @@ export default function MatchCard({ match, tz, feed = 'both', hidden = false }) 
       <div className="card-time">
         <div className="kickoff">{viewerTime}</div>
         <div className="kickoff-tz">{viewerAbbr}</div>
-        {/* Real in-match status from ESPN (clock/HT) beats the time-based guess. */}
+        {/* Real in-match status from ESPN (clock/HT) beats the time-based guess;
+            a match with a final score reads FT even if still inside the window. */}
         {match.live ? (
           <LiveBadge match={match} />
-        ) : (
-          status === 'live' && <div className="badge-live">● LIVE</div>
-        )}
-        {status === 'finished' && !match.live && (
+        ) : status === 'live' ? (
+          <div className="badge-live">● LIVE</div>
+        ) : status === 'finished' ? (
           <div className="badge-done" aria-label="Full time">FT</div>
-        )}
+        ) : null}
       </div>
 
       <div className="card-body">

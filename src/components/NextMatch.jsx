@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { VENUES } from '../data/venues.js'
 import { FLAG_BY_TEAM } from '../data/teams.js'
 import { STAGE_LABELS } from '../data/matches.js'
-import { dayKey, formatTime, tzAbbrev, matchStatus, teamKickoffTooltip } from '../utils/time.js'
+import { dayKey, formatTime, tzAbbrev, liveState, teamKickoffTooltip } from '../utils/time.js'
 import { useFollow } from '../context/follow.jsx'
 
 function parts(ms) {
@@ -28,7 +28,7 @@ export default function NextMatch({ matches, tz }) {
     const involvesFollowed = (m) => isFollowed(m.t1) || isFollowed(m.t2)
     // A live followed match wins; else any live match; else next upcoming
     // (preferring a followed team's next game).
-    const liveMatches = matches.filter((m) => matchStatus(m.ko, now) === 'live')
+    const liveMatches = matches.filter((m) => liveState(m, now) === 'live')
     const live = liveMatches.find(involvesFollowed) || liveMatches[0]
     if (live) return { match: live, live: true, followed: involvesFollowed(live) }
 

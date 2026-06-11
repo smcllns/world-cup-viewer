@@ -124,3 +124,13 @@ export function matchStatus(iso, now = Date.now()) {
   if (now <= end) return 'live'
   return 'finished'
 }
+
+// Authoritative status for a (possibly merged) match. Prefers real feed data
+// over the clock: a match ESPN flags live (`m.live`) is live; one that has a
+// final score is finished — even if it's still inside the time-based window
+// (e.g. ended early). The clock is only a fallback when we have neither.
+export function liveState(match, now = Date.now()) {
+  if (match.live) return 'live'
+  if (Array.isArray(match.score)) return 'finished'
+  return matchStatus(match.ko, now)
+}

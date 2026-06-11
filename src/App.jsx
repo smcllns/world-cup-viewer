@@ -9,7 +9,7 @@ import WeekView from './components/WeekView.jsx'
 import NextMatch from './components/NextMatch.jsx'
 import MatchDetail from './components/MatchDetail.jsx'
 import CalendarModal from './components/CalendarModal.jsx'
-import { detectTimezone, formatDateLong, dayKey, matchStatus } from './utils/time.js'
+import { detectTimezone, formatDateLong, dayKey, liveState } from './utils/time.js'
 import { readState, writeState } from './utils/urlState.js'
 import { parseQuery, matchesSearch } from './utils/search.js'
 import { fetchResults, applyResults, RESULTS_SOURCE, openFootballFinalScore } from './services/results.js'
@@ -175,13 +175,10 @@ export default function App() {
       if (filters.country !== 'all' && venue.country !== filters.country) return false
       if (filters.region !== 'all' && venue.region !== filters.region) return false
       if (filters.venue !== 'all' && m.venue !== filters.venue) return false
-      if (filters.timeframe === 'live') {
-        // Prefer ESPN's real live flag; fall back to the time-based guess only
-        // before the first poll (no score yet), so finished matches never match.
-        if (!(m.live || (matchStatus(m.ko) === 'live' && !m.score))) return false
-      } else if (filters.timeframe !== 'all' && matchStatus(m.ko) !== filters.timeframe) {
-        return false
-      }
+      // liveState prefers real feed data: a scored match reads "finished" even
+      // inside the time window, and only m.live (or a scoreless time-window
+      // match) reads "live" — so "Live now" never shows a finished game.
+      if (filters.timeframe !== 'all' && liveState(m) !== filters.timeframe) return false
       if (!matchesSearch(m, venue, parsed)) return false
       return true
     })
