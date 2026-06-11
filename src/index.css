@@ -651,6 +651,10 @@ select {
   font-size: 0.66rem; font-weight: 600; color: var(--text-faint);
 }
 .score-check-warn { color: var(--accent-2); font-weight: 700; }
+.wc-live {
+  margin-left: 6px; font-size: 0.62rem; font-weight: 700;
+  color: var(--live); animation: pulse 1.4s infinite;
+}
 .results-auto {
   display: inline-flex; align-items: center; gap: 4px;
   font-size: 0.76rem; color: var(--text-faint); cursor: pointer;

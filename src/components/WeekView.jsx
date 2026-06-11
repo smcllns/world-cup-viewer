@@ -7,6 +7,8 @@ import { dayKey, formatTime, teamKickoffTooltip } from '../utils/time.js'
 import { weekStartOf, addDays, weekLabel, weekdayHeader } from '../utils/week.js'
 import { useFollow } from '../context/follow.jsx'
 import { useDetail } from '../context/detail.js'
+import LiveBadge from './LiveBadge.jsx'
+import ScoreCheck from './ScoreCheck.jsx'
 
 function Legend() {
   return (
@@ -30,6 +32,9 @@ function WeekCell({ m, tz, hidden }) {
   const color = colorForMatch(m)
   const label = m.stage === 'Group' ? `Group ${m.group}` : STAGE_LABELS[m.stage]
   const showScore = Array.isArray(m.score) && !hidden
+  const scoreText = showScore
+    ? `${m.score[0]}–${m.score[1]}${m.pens ? ` (p ${m.pens[0]}–${m.pens[1]})` : m.aet ? ' AET' : ''}`
+    : 'v'
   const cls = (name) => `wc-name${isFollowed(name) ? ' followed' : ''}`
   return (
     <button
@@ -38,18 +43,22 @@ function WeekCell({ m, tz, hidden }) {
       style={{ borderLeftColor: color, background: `${color}1f` }}
       onClick={() => openDetail(m)}
     >
-      <div className="wc-time">{formatTime(m.ko, tz)}</div>
+      <div className="wc-time">
+        {formatTime(m.ko, tz)}
+        {m.live && <LiveBadge match={m} className="wc-live" />}
+      </div>
       <div className="wc-team" title={teamKickoffTooltip(m.ko, m.t1) || undefined}>
         <span className="wc-flag">{FLAG_BY_TEAM[m.t1] || '•'}</span>
         <span className={cls(m.t1)}>{m.t1}</span>
       </div>
-      <div className="wc-mid">{showScore ? `${m.score[0]}–${m.score[1]}` : 'v'}</div>
+      <div className="wc-mid">{scoreText}</div>
       <div className="wc-team" title={teamKickoffTooltip(m.ko, m.t2) || undefined}>
         <span className="wc-flag">{FLAG_BY_TEAM[m.t2] || '•'}</span>
         <span className={cls(m.t2)}>{m.t2}</span>
       </div>
       <div className="wc-foot">
         <span className="wc-stage" style={{ color }}>{label}</span>
+        {showScore && <ScoreCheck match={m} compact />}
         <span className="wc-venue">{venue.countryFlag} {venue.city}</span>
       </div>
     </button>

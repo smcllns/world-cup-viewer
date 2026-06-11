@@ -175,7 +175,13 @@ export default function App() {
       if (filters.country !== 'all' && venue.country !== filters.country) return false
       if (filters.region !== 'all' && venue.region !== filters.region) return false
       if (filters.venue !== 'all' && m.venue !== filters.venue) return false
-      if (filters.timeframe !== 'all' && matchStatus(m.ko) !== filters.timeframe) return false
+      if (filters.timeframe === 'live') {
+        // Prefer ESPN's real live flag; fall back to the time-based guess only
+        // before the first poll (no score yet), so finished matches never match.
+        if (!(m.live || (matchStatus(m.ko) === 'live' && !m.score))) return false
+      } else if (filters.timeframe !== 'all' && matchStatus(m.ko) !== filters.timeframe) {
+        return false
+      }
       if (!matchesSearch(m, venue, parsed)) return false
       return true
     })

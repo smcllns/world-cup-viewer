@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { VENUES } from '../data/venues.js'
 import { FLAG_BY_TEAM } from '../data/teams.js'
 import { STAGE_LABELS } from '../data/matches.js'
@@ -6,6 +6,12 @@ import { US_BROADCAST } from '../data/broadcast.js'
 import { formatTime, formatDateLong, tzAbbrev, matchStatus, teamKickoffTooltip } from '../utils/time.js'
 import { downloadICS } from '../utils/ics.js'
 import { useFollow } from '../context/follow.jsx'
+import { useModalA11y } from '../hooks/useModalA11y.js'
+import LiveBadge from './LiveBadge.jsx'
+import ScoreCheck from './ScoreCheck.jsx'
+
+// Minute label including stoppage time, e.g. "45+3'".
+const minuteLabel = (e) => (e.minute != null ? `${e.minute}${e.extra ? `+${e.extra}` : ''}'` : '')
 
 function FollowStar({ name }) {
   const { isFollowed, toggle } = useFollow()
@@ -25,23 +31,27 @@ function FollowStar({ name }) {
 }
 
 function Timeline({ match }) {
-  if (!match.goals || (!match.goals.t1.length && !match.goals.t2.length)) {
-    return <p className="md-nogoals">No goal data yet.</p>
-  }
-  const events = [
-    ...match.goals.t1.map((g) => ({ ...g, side: 't1' })),
-    ...match.goals.t2.map((g) => ({ ...g, side: 't2' })),
-  ].sort((a, b) => (a.minute ?? 999) - (b.minute ?? 999))
+  const events = []
+  const collect = (list, side, type) => (list || []).forEach((x) => events.push({ ...x, side, type }))
+  collect(match.goals?.t1, 't1', 'goal')
+  collect(match.goals?.t2, 't2', 'goal')
+  collect(match.cards?.t1, 't1', 'card')
+  collect(match.cards?.t2, 't2', 'card')
+  collect(match.subs?.t1, 't1', 'sub')
+  collect(match.subs?.t2, 't2', 'sub')
+  if (!events.length) return <p className="md-nogoals">No events yet.</p>
+  events.sort((a, b) => (a.minute ?? 999) - (b.minute ?? 999) || (a.extra ?? 0) - (b.extra ?? 0))
+  const icon = (e) => (e.type === 'card' ? (e.color === 'red' ? '🟥' : '🟨') : e.type === 'sub' ? '🔁' : '⚽')
   return (
     <ul className="timeline">
-      {events.map((g, i) => (
-        <li key={i} className={`tl-${g.side}`}>
-          <span className="tl-min">{g.minute != null ? `${g.minute}'` : ''}</span>
-          <span className="tl-ball">⚽</span>
+      {events.map((e, i) => (
+        <li key={i} className={`tl-${e.side}`}>
+          <span className="tl-min">{minuteLabel(e)}</span>
+          <span className="tl-ball">{icon(e)}</span>
           <span className="tl-name">
-            {g.name}
-            {g.penalty && <em> (pen)</em>}
-            {g.og && <em> (OG)</em>}
+            {e.type === 'sub' ? (e.names || []).join(' / ') : e.name}
+            {e.type === 'goal' && e.penalty && <em> (pen)</em>}
+            {e.type === 'goal' && e.og && <em> (OG)</em>}
           </span>
         </li>
       ))}
@@ -51,12 +61,7 @@ function Timeline({ match }) {
 
 export default function MatchDetail({ match, tz, hideScores, onClose }) {
   const [reveal, setReveal] = useState(false)
-
-  useEffect(() => {
-    const onKey = (e) => e.key === 'Escape' && onClose()
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [onClose])
+  const cardRef = useModalA11y(onClose)
 
   if (!match) return null
   const venue = VENUES[match.venue]
@@ -67,12 +72,16 @@ export default function MatchDetail({ match, tz, hideScores, onClose }) {
 
   return (
     <div className="md-overlay" onClick={onClose} role="dialog" aria-modal="true">
-      <div className="md-card" onClick={(e) => e.stopPropagation()}>
+      <div className="md-card" ref={cardRef} tabIndex={-1} onClick={(e) => e.stopPropagation()}>
         <button className="md-close" onClick={onClose} aria-label="Close">✕</button>
 
         <div className="md-head">
           <span className="md-stage">{stage} · Match {match.num}</span>
-          {status === 'live' && <span className="md-live">● LIVE</span>}
+          {match.live ? (
+            <LiveBadge match={match} className="md-live" />
+          ) : (
+            status === 'live' && <span className="md-live">● LIVE</span>
+          )}
         </div>
 
         <div className="md-teams">
@@ -90,6 +99,7 @@ export default function MatchDetail({ match, tz, hideScores, onClose }) {
                   {match.score[0]}–{match.score[1]}
                   {match.pens && <div className="md-extra">pens {match.pens[0]}–{match.pens[1]}</div>}
                   {match.aet && !match.pens && <div className="md-extra">after extra time</div>}
+                  <ScoreCheck match={match} />
                 </>
               )
             ) : (
@@ -111,7 +121,7 @@ export default function MatchDetail({ match, tz, hideScores, onClose }) {
 
         {hasScore && !scoreHidden && (
           <div className="md-section">
-            <h4>Goals</h4>
+            <h4>Match events</h4>
             <Timeline match={match} />
           </div>
         )}

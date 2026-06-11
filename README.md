@@ -37,9 +37,11 @@ city/stadium, a bracket, group standings, and live results.
   query string.
 - **Live results** — final scores from the [OpenFootball](https://github.com/openfootball/worldcup.json)
   public JSON feed (no API key), merged in and auto-refreshed, with a live
-  in-match score + clock overlaid from [ESPN](https://www.espn.com/soccer/)
-  while games are underway, and final scores cross-checked against a third
-  source ([TheSportsDB](https://www.thesportsdb.com/)) — each card shows how many
+  in-match score + clock (incl. "HT"/stoppage) overlaid from
+  [ESPN](https://www.espn.com/soccer/) while games are underway — shown across the
+  Schedule, Week, and Bracket views. The Match Detail timeline lists goals, cards,
+  and subs. Final scores are cross-checked against a third source
+  ([TheSportsDB](https://www.thesportsdb.com/)) — each match shows how many
   independent sources confirm the result.
 
 ## Develop

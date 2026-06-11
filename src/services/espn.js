@@ -53,27 +53,44 @@ function parseEspnScore(home, away, state) {
   return [h, a]
 }
 
-// Scoring plays from ESPN's competition.details -> our { name, minute, penalty,
-// og } goal shape, split by team id into { home: [], away: [] }. Skips cards and
-// penalty-shootout kicks. For an own goal ESPN credits the benefiting team, so
-// it lands on the correct side (flagged og).
-function parseEspnGoals(comp, homeId, awayId) {
+// Parse an ESPN event clock like "9'" or "45'+3'" -> { minute, extra }. `extra`
+// is the stoppage component (the "+3"), preserved so the timeline can show
+// "45+3'". NOTE: ESPN exposes elapsed stoppage only, not the announced ("+4")
+// added time — there is no such field in the scoreboard feed.
+function parseClock(displayValue) {
+  const [base, extra] = String(displayValue || '').replace(/'/g, '').split('+')
+  const minute = parseInt(base, 10)
+  const ex = extra != null ? parseInt(extra, 10) : NaN
+  return { minute: Number.isNaN(minute) ? null : minute, extra: Number.isNaN(ex) ? undefined : ex }
+}
+
+// Match events from ESPN's competition.details, split by team id into
+// { home: [], away: [] } lists for goals, cards, and subs. Skips shootout kicks.
+// Goal: { name, minute, extra, penalty, og } (own goals are credited to the
+// benefiting team, flagged og). Card: { name, minute, extra, color }.
+// Sub: { minute, extra, names } (ESPN's scoreboard feed doesn't reliably mark
+// in/out, so we just list the players involved).
+function parseEspnEvents(comp, homeId, awayId) {
   const goals = { home: [], away: [] }
+  const cards = { home: [], away: [] }
+  const subs = { home: [], away: [] }
   for (const ev of comp.details || []) {
-    if (!ev.scoringPlay || ev.shootout) continue
-    const a = ev.athletesInvolved?.[0]
-    const min = parseInt(ev.clock?.displayValue, 10)
-    const g = {
-      name: a?.shortName || a?.displayName || '',
-      minute: Number.isNaN(min) ? null : min,
-      penalty: Boolean(ev.penaltyKick),
-      og: Boolean(ev.ownGoal),
-    }
+    if (ev.shootout) continue
     const tid = String(ev.team?.id)
-    if (tid === String(homeId)) goals.home.push(g)
-    else if (tid === String(awayId)) goals.away.push(g)
+    const side = tid === String(homeId) ? 'home' : tid === String(awayId) ? 'away' : null
+    if (!side) continue
+    const { minute, extra } = parseClock(ev.clock?.displayValue)
+    const athletes = ev.athletesInvolved || []
+    const name = athletes[0]?.shortName || athletes[0]?.displayName || ''
+    if (ev.scoringPlay) {
+      goals[side].push({ name, minute, extra, penalty: Boolean(ev.penaltyKick), og: Boolean(ev.ownGoal) })
+    } else if (ev.redCard || ev.yellowCard) {
+      cards[side].push({ name, minute, extra, color: ev.redCard ? 'red' : 'yellow' })
+    } else if (/substitution/i.test(ev.type?.text || '')) {
+      subs[side].push({ minute, extra, names: athletes.map((a) => a.shortName || a.displayName).filter(Boolean) })
+    }
   }
-  return goals
+  return { goals, cards, subs }
 }
 
 // Build a lookup of live records from ESPN's scoreboard. Every record is stored
@@ -83,7 +100,12 @@ function parseEspnGoals(comp, homeId, awayId) {
 export async function fetchLive(signal) {
   const res = await fetch(LIVE_SOURCE.url, { signal, cache: 'no-store' })
   if (!res.ok) throw new Error(`Live request failed (HTTP ${res.status})`)
-  const data = await res.json()
+  let data
+  try {
+    data = await res.json()
+  } catch {
+    throw new Error('Live response was not valid JSON')
+  }
   const map = new Map()
   for (const ev of data.events || []) {
     const comp = ev.competitions?.[0]
@@ -94,14 +116,19 @@ export async function fetchLive(signal) {
 
     const st = ev.status || comp.status || {}
     const state = st.type?.state || 'pre' // 'pre' | 'in' | 'post'
+    const events = parseEspnEvents(comp, home.team.id, away.team.id)
     const rec = {
       home: normEspn(home.team.displayName),
       away: normEspn(away.team.displayName),
       state,
-      clock: st.displayClock || '',
-      detail: st.type?.shortDetail || st.type?.description || '',
+      // shortDetail is the running clock during play ("23'", "45'+3'") and the
+      // break label at stoppages ("HT", "FT") — exactly what the badge shows.
+      clock: st.type?.shortDetail || st.displayClock || '',
+      detail: st.type?.description || st.type?.shortDetail || '',
       score: parseEspnScore(home, away, state),
-      goals: parseEspnGoals(comp, home.team.id, away.team.id),
+      goals: events.goals,
+      cards: events.cards,
+      subs: events.subs,
       instant: ev.date ? new Date(ev.date).getTime() : null,
     }
     // Penalty shootout, if ESPN exposes it (knockouts).
@@ -162,11 +189,11 @@ export function applyLive(matches, liveMap) {
       if (isRealTeam(rec.away)) out.t2 = rec.away
       out.score = [...rec.score]
     }
-    // Orient the scorer timeline the same way as the score.
-    if (rec.goals && (rec.goals.home.length || rec.goals.away.length)) {
-      out.goals = aligned
-        ? { t1: rec.goals.home, t2: rec.goals.away }
-        : { t1: rec.goals.away, t2: rec.goals.home }
+    // Orient the event timelines (goals, cards, subs) the same way as the score.
+    const orient = (o) => (aligned ? { t1: o.home, t2: o.away } : { t1: o.away, t2: o.home })
+    for (const key of ['goals', 'cards', 'subs']) {
+      const o = rec[key]
+      if (o && (o.home.length || o.away.length)) out[key] = orient(o)
     }
     if (rec.pens) out.pens = [...rec.pens]
     if (rec.state === 'in') out.live = { clock: rec.clock, detail: rec.detail }

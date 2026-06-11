@@ -55,7 +55,12 @@ function instantOf(ev) {
 export async function fetchBackup(signal) {
   const res = await fetch(BACKUP_SOURCE.url, { signal, cache: 'no-store' })
   if (!res.ok) throw new Error(`Backup request failed (HTTP ${res.status})`)
-  const data = await res.json()
+  let data
+  try {
+    data = await res.json()
+  } catch {
+    throw new Error('Backup response was not valid JSON')
+  }
   const map = new Map()
   for (const ev of data.events || []) {
     const home = normSdb(ev.strHomeTeam)

@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { downloadICSCollection, webcalUrl, googleCalendarUrl } from '../utils/ics.js'
 import { useFollow } from '../context/follow.jsx'
+import { useModalA11y } from '../hooks/useModalA11y.js'
 
 // Subscriptions must point at the deployed feed (a localhost URL can't be
 // subscribed to), so links always use the production origin.
@@ -32,12 +33,7 @@ function SubRow({ label, httpsUrl }) {
 
 export default function CalendarModal({ matches, filtered, onClose }) {
   const { followed, count } = useFollow()
-
-  useEffect(() => {
-    const onKey = (e) => e.key === 'Escape' && onClose()
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [onClose])
+  const cardRef = useModalA11y(onClose)
 
   const teamsParam = [...followed].map(encodeURIComponent).join(',')
   const myFeed = `${FEED}?teams=${teamsParam}`
@@ -45,7 +41,7 @@ export default function CalendarModal({ matches, filtered, onClose }) {
 
   return (
     <div className="md-overlay" onClick={onClose} role="dialog" aria-modal="true">
-      <div className="md-card cal-modal" onClick={(e) => e.stopPropagation()}>
+      <div className="md-card cal-modal" ref={cardRef} tabIndex={-1} onClick={(e) => e.stopPropagation()}>
         <button className="md-close" onClick={onClose} aria-label="Close">✕</button>
         <h3 className="cal-title">📅 Calendar</h3>
 

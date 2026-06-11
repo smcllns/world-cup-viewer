@@ -5,6 +5,8 @@ import { BRACKET, matchesByNum } from '../utils/bracket.js'
 import { formatTime, tzAbbrev, teamKickoffTooltip } from '../utils/time.js'
 import { useFollow } from '../context/follow.jsx'
 import { useDetail } from '../context/detail.js'
+import LiveBadge from './LiveBadge.jsx'
+import ScoreCheck from './ScoreCheck.jsx'
 
 function Side({ name, ko }) {
   const flag = FLAG_BY_TEAM[name]
@@ -30,13 +32,17 @@ function BracketMatch({ num, byNum, tz, hideScores }) {
   })
   const showScore = m.score && !hideScores
   return (
-    <div className="bx-match" role="button" tabIndex={0} onClick={() => openDetail(m)}
+    <div className="bx-match" role="button" tabIndex={0}
+      aria-label={`${m.t1} versus ${m.t2}, ${STAGE_LABELS[m.stage]}, Match ${m.num}`}
+      onClick={() => openDetail(m)}
       onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && openDetail(m)}>
       <div className="bx-meta">
         <span>M{m.num}</span>
-        <span>
-          {date} · {formatTime(m.ko, tz)} {tzAbbrev(m.ko, tz)}
-        </span>
+        {m.live ? <LiveBadge match={m} /> : (
+          <span>
+            {date} · {formatTime(m.ko, tz)} {tzAbbrev(m.ko, tz)}
+          </span>
+        )}
       </div>
       <Side name={m.t1} ko={m.ko} />
       <Side name={m.t2} ko={m.ko} />
@@ -45,6 +51,7 @@ function BracketMatch({ num, byNum, tz, hideScores }) {
           {m.score[0]}–{m.score[1]}
           {m.pens && <span className="bx-pens"> (p {m.pens[0]}–{m.pens[1]})</span>}
           {m.aet && !m.pens && <span className="bx-pens"> AET</span>}
+          <ScoreCheck match={m} compact />
         </div>
       )}
       <div className="bx-venue">

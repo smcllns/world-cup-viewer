@@ -91,9 +91,17 @@ function parseGoals(arr) {
 export async function fetchResults(signal) {
   const res = await fetch(RESULTS_SOURCE.url, { signal, cache: 'no-store' })
   if (!res.ok) throw new Error(`Results request failed (HTTP ${res.status})`)
-  const data = await res.json()
+  let data
+  try {
+    data = await res.json()
+  } catch {
+    throw new Error('Results response was not valid JSON')
+  }
+  // Guard against a 200 that isn't the feed we expect (e.g. an HTML error page
+  // that happens to parse) — better to surface an error than silently show none.
+  if (!Array.isArray(data.matches)) throw new Error('Results feed is missing a matches[] array')
   const map = new Map()
-  for (const m of data.matches || []) {
+  for (const m of data.matches) {
     const key = apiKey(m)
     if (!key) continue
     map.set(key, {

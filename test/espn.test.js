@@ -107,6 +107,29 @@ describe('applyLive (overlay onto the merged schedule)', () => {
     expect(applyLive(MATCHES, new Map())).toBe(MATCHES)
   })
 
+  it('parses cards and preserves stoppage-time minutes, oriented to our order', async () => {
+    // ESPN home = South Africa (our t2), so events on team 'A' (Mexico, our t1).
+    const feed = {
+      events: [
+        event({
+          date: '2026-06-11T19:00Z', state: 'in', clock: "45'+2'",
+          home: 'South Africa', hs: '0', away: 'Mexico', as: '1',
+          details: [
+            { type: { text: 'Goal' }, clock: { displayValue: "45'+2'" }, team: { id: 'A' }, scoringPlay: true, athletesInvolved: [{ shortName: 'J. Quiñones' }] },
+            { type: { text: 'Yellow Card' }, clock: { displayValue: "40'" }, team: { id: 'A' }, yellowCard: true, athletesInvolved: [{ shortName: 'C. Montes' }] },
+          ],
+        }),
+      ],
+    }
+    global.fetch = vi.fn(async () => ({ ok: true, json: async () => feed }))
+    const m = applyLive(MATCHES, await fetchLive()).find((x) => x.num === 1)
+
+    expect(m.goals.t1).toEqual([{ name: 'J. Quiñones', minute: 45, extra: 2, penalty: false, og: false }])
+    expect(m.cards.t1).toEqual([{ name: 'C. Montes', minute: 40, extra: undefined, color: 'yellow' }])
+    // ...and the live label uses ESPN's shortDetail (so "HT"/"FT" show, not the clock).
+    expect(m.live.clock).toBe("45'+2'")
+  })
+
   it('parses goal events and orients the scorer timeline to our team order', async () => {
     // ESPN home = South Africa (away in our order), so goals must be flipped.
     const feed = {

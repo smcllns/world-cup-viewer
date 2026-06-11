@@ -5,6 +5,22 @@ calendar day; bullet points capture every change made that day (features, fixes,
 data/source updates, deployment). Newest day on top.
 
 ## 2026-06-11
+- **Live state everywhere + richer timeline (app-wide audit follow-up):**
+  - Live badge/clock now shows in **Week** and **Bracket** views (was Schedule-only),
+    via shared `LiveBadge`/`ScoreCheck` components; Week also gained pens/AET labels
+    and the source cross-check badge.
+  - **Match status label**: the badge shows ESPN's `shortDetail`, so it reads
+    "HT"/"FT" at breaks instead of a frozen clock; **stoppage time** is preserved in
+    the clock ("45'+3'") and in goal/card minutes ("45+2'"). (ESPN's feed does not
+    expose the *announced* added-time "+4", only elapsed — documented in espn.js.)
+  - **Cards & substitutions**: ESPN `details` now parsed into `m.cards`/`m.subs` and
+    rendered in the Match Detail timeline (⚽ 🟨 🟥 🔁); "Goals" → "Match events".
+  - **"Live now" filter** uses the real `m.live` flag instead of the time-based guess.
+  - **Accessibility**: `aria-label`/`role="status"` on live/FT badges, aria-label on
+    bracket matches, and a `useModalA11y` hook (focus trap + restore) for both modals.
+  - **SEO/social**: description, Open Graph, Twitter card, and theme-color in index.html.
+  - **Robustness**: all three fetchers guard `res.json()`; OpenFootball also asserts a
+    `matches[]` array so a bad 200 surfaces an error instead of silently showing none.
 
 - **TheSportsDB as a third source + score cross-check:** added
   `src/services/thesportsdb.js` (free, CORS-open, public test key; FIFA World Cup
