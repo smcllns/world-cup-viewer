@@ -53,6 +53,29 @@ function parseEspnScore(home, away, state) {
   return [h, a]
 }
 
+// Scoring plays from ESPN's competition.details -> our { name, minute, penalty,
+// og } goal shape, split by team id into { home: [], away: [] }. Skips cards and
+// penalty-shootout kicks. For an own goal ESPN credits the benefiting team, so
+// it lands on the correct side (flagged og).
+function parseEspnGoals(comp, homeId, awayId) {
+  const goals = { home: [], away: [] }
+  for (const ev of comp.details || []) {
+    if (!ev.scoringPlay || ev.shootout) continue
+    const a = ev.athletesInvolved?.[0]
+    const min = parseInt(ev.clock?.displayValue, 10)
+    const g = {
+      name: a?.shortName || a?.displayName || '',
+      minute: Number.isNaN(min) ? null : min,
+      penalty: Boolean(ev.penaltyKick),
+      og: Boolean(ev.ownGoal),
+    }
+    const tid = String(ev.team?.id)
+    if (tid === String(homeId)) goals.home.push(g)
+    else if (tid === String(awayId)) goals.away.push(g)
+  }
+  return goals
+}
+
 // Build a lookup of live records from ESPN's scoreboard. Every record is stored
 // twice: by team pair (unique per tournament for played matches; survives
 // simultaneous group kickoffs) and by kickoff instant (lets us match knockout
@@ -78,6 +101,7 @@ export async function fetchLive(signal) {
       clock: st.displayClock || '',
       detail: st.type?.shortDetail || st.type?.description || '',
       score: parseEspnScore(home, away, state),
+      goals: parseEspnGoals(comp, home.team.id, away.team.id),
       instant: ev.date ? new Date(ev.date).getTime() : null,
     }
     // Penalty shootout, if ESPN exposes it (knockouts).
@@ -127,15 +151,22 @@ export function applyLive(matches, liveMap) {
     }
 
     const out = { ...m }
+    // Whether ESPN's (home, away) order already matches our (t1, t2). For a
+    // knockout placeholder we adopt ESPN's order outright, so it's aligned.
+    const aligned = !bothReal || normalizeTeam(m.t1) === rec.home
     if (bothReal) {
-      // Orient ESPN's (home, away) score to our (t1, t2) ordering.
-      const aligned = normalizeTeam(m.t1) === rec.home
       out.score = aligned ? [...rec.score] : [rec.score[1], rec.score[0]]
     } else {
       // Knockout placeholder: adopt ESPN's teams + their (home, away) order.
       if (isRealTeam(rec.home)) out.t1 = rec.home
       if (isRealTeam(rec.away)) out.t2 = rec.away
       out.score = [...rec.score]
+    }
+    // Orient the scorer timeline the same way as the score.
+    if (rec.goals && (rec.goals.home.length || rec.goals.away.length)) {
+      out.goals = aligned
+        ? { t1: rec.goals.home, t2: rec.goals.away }
+        : { t1: rec.goals.away, t2: rec.goals.home }
     }
     if (rec.pens) out.pens = [...rec.pens]
     if (rec.state === 'in') out.live = { clock: rec.clock, detail: rec.detail }

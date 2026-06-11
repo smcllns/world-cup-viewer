@@ -7,17 +7,30 @@ const match1 = MATCHES.find((m) => m.num === 1) // Mexico v South Africa
 const instOf = (m) => 'inst:' + new Date(m.ko).getTime()
 
 // Minimal ESPN scoreboard shape (one competition per event).
-const event = ({ date, state, clock, home, hs, away, as }) => ({
+const event = ({ date, state, clock, home, hs, away, as, details }) => ({
   date,
   status: { displayClock: clock, type: { state, shortDetail: clock, description: state } },
   competitions: [
     {
       competitors: [
-        { homeAway: 'home', team: { displayName: home }, score: hs },
-        { homeAway: 'away', team: { displayName: away }, score: as },
+        { homeAway: 'home', team: { id: 'H', displayName: home }, score: hs },
+        { homeAway: 'away', team: { id: 'A', displayName: away }, score: as },
       ],
+      details: details || [],
     },
   ],
+})
+
+// One ESPN scoring-play detail (team is 'H' or 'A').
+const goal = ({ team, min, name, pen = false, og = false }) => ({
+  type: { id: '70', text: 'Goal' },
+  clock: { displayValue: `${min}'` },
+  team: { id: team },
+  scoringPlay: true,
+  penaltyKick: pen,
+  ownGoal: og,
+  shootout: false,
+  athletesInvolved: [{ shortName: name, displayName: name }],
 })
 
 describe('fetchLive (parsing ESPN shape)', () => {
@@ -92,6 +105,26 @@ describe('applyLive (overlay onto the merged schedule)', () => {
   it('returns the input unchanged when there is no live data', () => {
     expect(applyLive(MATCHES, null)).toBe(MATCHES)
     expect(applyLive(MATCHES, new Map())).toBe(MATCHES)
+  })
+
+  it('parses goal events and orients the scorer timeline to our team order', async () => {
+    // ESPN home = South Africa (away in our order), so goals must be flipped.
+    const feed = {
+      events: [
+        event({
+          date: '2026-06-11T19:00Z', state: 'in', clock: "31'",
+          home: 'South Africa', hs: '0', away: 'Mexico', as: '1',
+          details: [goal({ team: 'A', min: 9, name: 'J. Quiñones' })],
+        }),
+      ],
+    }
+    global.fetch = vi.fn(async () => ({ ok: true, json: async () => feed }))
+    const map = await fetchLive()
+
+    const m = applyLive(MATCHES, map).find((x) => x.num === 1) // our order: Mexico v South Africa
+    expect(m.score).toEqual([1, 0])
+    expect(m.goals.t1).toEqual([{ name: 'J. Quiñones', minute: 9, penalty: false, og: false }])
+    expect(m.goals.t2).toEqual([])
   })
 })
 
