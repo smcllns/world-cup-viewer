@@ -5,6 +5,19 @@ calendar day; bullet points capture every change made that day (features, fixes,
 data/source updates, deployment). Newest day on top.
 
 ## 2026-06-11
+- **Installable (PWA manifest):** added `public/manifest.webmanifest` + app icons
+  (192/512/maskable, apple-touch-icon) and linked them in index.html, so the app
+  can be added to a phone/desktop home screen and launches standalone (no browser
+  chrome) with a branded splash. Relative paths so it works on both Netlify (root)
+  and GitHub Pages (sub-path). No service worker / offline yet — install + chrome
+  only.
+- **OG preview image:** added a branded 1200×630 `public/og-image.png` (+ source
+  SVG) and wired `og:image`/`twitter:image` (summary_large_image) so shared links
+  unfurl with a picture.
+- **Fixed finished match showing as live:** new `liveState()` helper — a match
+  ESPN flags is live, a match with a final score is finished even inside the
+  time-based window; the clock is only a fallback. Used by MatchCard, MatchDetail,
+  NextMatch, and the "Live now" filter (a just-ended game now reads FT immediately).
 - **Live state everywhere + richer timeline (app-wide audit follow-up):**
   - Live badge/clock now shows in **Week** and **Bracket** views (was Schedule-only),
     via shared `LiveBadge`/`ScoreCheck` components; Week also gained pens/AET labels
