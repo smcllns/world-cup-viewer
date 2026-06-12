@@ -5,6 +5,15 @@ calendar day; bullet points capture every change made that day (features, fixes,
 data/source updates, deployment). Newest day on top.
 
 ## 2026-06-11
+- **Feed-freshness gate now alarms only when the app is blind:** the CI check
+  bucketed STALE on OpenFootball alone, so it red-failed after every finished
+  match while OpenFootball (which commits results hours late) caught up — even
+  though ESPN/TheSportsDB already carried the final and the app showed it. The
+  gate now treats a match as scored if *any* of the three sources has the final,
+  and only fails when none do (the app would genuinely show no score).
+  OpenFootball lagging behind a fallback is surfaced as an informational note
+  instead of a failure. (Opener: Mexico 2–0 South Africa was on ESPN but not yet
+  in OpenFootball — gate stayed green.)
 - **Distinct nav icons:** Schedule, Week, and the Calendar subscribe/export button
   all shared a calendar glyph. Schedule is now `📋`, Week stays `📆`, and the
   Calendar button is `📤` (it's an export/subscribe action), so each is visually

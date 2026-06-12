@@ -6,11 +6,18 @@
 // actually carry its score?". This script answers exactly that by reusing the
 // app's own fetch + match-keying, so it can never drift from the schedule.
 //
-// For every scheduled match whose kickoff is far enough in the past that it
-// must be over, we look for a final score in the live feed and bucket it:
-//   • scored   — result present (healthy)
-//   • pending  — finished < STALE_HOURS ago, no score yet (feed may catch up)
-//   • STALE    — finished >= STALE_HOURS ago, still no score (the alarm)
+// The app shows a score if ANY of its three sources carries the final, so the
+// gate buckets on the same union — it alarms only when the app would be blind,
+// not merely when one source lags. For every scheduled match old enough that it
+// must be over, we look for a final across OpenFootball / ESPN / TheSportsDB:
+//   • scored   — at least one source has the final (the app can show it)
+//   • pending  — finished < STALE_HOURS ago, no source yet (sources may catch up)
+//   • STALE    — finished >= STALE_HOURS ago, NO source has it (the alarm)
+//
+// OpenFootball is still the source of record; when it lags behind a fallback the
+// match is "scored" (not stale) but is also reported under an informational
+// "OpenFootball lagging" note, so the source-of-record drift stays visible
+// without failing CI after every match.
 //
 // Exit status: 0 if nothing is stale, 1 if any finished match is stale. That
 // makes it usable as a cron/CI gate (.github/workflows/feed-freshness.yml) so
@@ -20,7 +27,7 @@
 // Tune:  STALE_HOURS=6 node scripts/check-feed-freshness.mjs   (default 4)
 
 import { MATCHES } from '../src/data/matches.js'
-import { fetchResults, matchKey, RESULTS_SOURCE, openFootballFinalScore } from '../src/services/results.js'
+import { fetchResults, RESULTS_SOURCE, openFootballFinalScore } from '../src/services/results.js'
 import { fetchLive, LIVE_SOURCE, espnFinalScore } from '../src/services/espn.js'
 import { fetchBackup, BACKUP_SOURCE, sdbFinalScore } from '../src/services/thesportsdb.js'
 import { reconcileScores } from '../src/services/reconcile.js'
@@ -58,18 +65,26 @@ async function feedCommitAge() {
 }
 
 async function main() {
-  let map
+  let ofMap
   try {
-    map = await fetchResults()
+    ofMap = await fetchResults()
   } catch (err) {
-    console.error(`✖ Could not fetch the live feed: ${err.message}`)
+    console.error(`✖ Could not fetch the source-of-record feed: ${err.message}`)
     console.error(`  ${RESULTS_SOURCE.url}`)
     process.exit(2)
   }
 
+  // The app also overlays ESPN (live) and TheSportsDB (backup). Fetch both
+  // best-effort: the gate must still run if either is unreachable, falling back
+  // to whatever sources did respond.
+  const [liveRes, backupRes] = await Promise.allSettled([fetchLive(), fetchBackup()])
+  const liveMap = liveRes.status === 'fulfilled' ? liveRes.value : null
+  const backupMap = backupRes.status === 'fulfilled' ? backupRes.value : null
+
   const scored = []
   const pending = []
   const stale = []
+  const ofLagging = [] // a fallback has the final, but OpenFootball doesn't yet
   let upcoming = 0
 
   for (const m of MATCHES) {
@@ -78,10 +93,19 @@ async function main() {
       upcoming++
       continue // not over yet — no result expected
     }
-    const hasScore = Boolean(map.get(matchKey(m))?.score)
-    if (hasScore) scored.push(m)
-    else if (age >= STALE_HOURS) stale.push(m)
-    else pending.push(m)
+    const ofScore = openFootballFinalScore(m, ofMap)
+    const hasScore =
+      ofScore ||
+      (liveMap && espnFinalScore(m, liveMap)) ||
+      (backupMap && sdbFinalScore(m, backupMap))
+    if (hasScore) {
+      scored.push(m)
+      if (!ofScore) ofLagging.push(m)
+    } else if (age >= STALE_HOURS) {
+      stale.push(m)
+    } else {
+      pending.push(m)
+    }
   }
 
   const finished = scored.length + pending.length + stale.length
@@ -92,7 +116,7 @@ async function main() {
   console.log(
     `  last commit:   ${commit ? `${commit.hours.toFixed(1)}h ago (${fmt(commit.date)})` : 'unknown'}`,
   )
-  console.log(`  stale after:   ${STALE_HOURS}h past kickoff with no score\n`)
+  console.log(`  stale after:   ${STALE_HOURS}h past kickoff with no score from any source\n`)
 
   if (finished === 0) {
     console.log(`No matches have finished yet — ${upcoming} still upcoming. Nothing to check. ✓\n`)
@@ -109,33 +133,44 @@ async function main() {
     console.log()
   }
 
+  // Source of record lagging behind a fallback: not stale (the app shows the
+  // score), but worth surfacing so the OpenFootball drift stays visible.
+  if (ofLagging.length) {
+    console.log(`OpenFootball (source of record) lagging — final only via fallback (ESPN/TheSportsDB):`)
+    for (const m of ofLagging) {
+      console.log(`  · #${m.num} ${m.t1} v ${m.t2} — kicked off ${fmt(m.ko)} (${hoursSince(m.ko).toFixed(1)}h ago)`)
+    }
+    console.log()
+  }
+
   // Cross-validate OpenFootball against ESPN + TheSportsDB (best-effort).
   // worldcupjson.net can't fill this role — no 2026 data, no CORS.
-  await reportDisagreements(map)
+  reportDisagreements(ofMap, liveMap, backupMap)
 
   if (stale.length) {
-    console.log(`⚠ STALE — finished >= ${STALE_HOURS}h ago, still no score in the feed:`)
+    console.log(`⚠ STALE — finished >= ${STALE_HOURS}h ago, no source has a final score:`)
     for (const m of stale) {
       console.log(`  ✖ #${m.num} ${m.t1} v ${m.t2} — kicked off ${fmt(m.ko)} (${hoursSince(m.ko).toFixed(1)}h ago)`)
     }
-    console.log(`\nThe OpenFootball 2026 feed is lagging. Check its commits, or consider a fallback source.\n`)
+    console.log(`\nNone of OpenFootball, ESPN, or TheSportsDB carry these results — the app would show no score.\n`)
     process.exit(1)
   }
 
-  console.log(`All finished matches have results. Feed is healthy. ✓\n`)
+  console.log(`All finished matches have a result from at least one source. ✓\n`)
 }
 
 // Where two or more sources report a final score, flag any disagreement.
-async function reportDisagreements(ofMap) {
+// Maps are fetched once in main() and passed in (null when a source was
+// unreachable).
+function reportDisagreements(ofMap, liveMap, backupMap) {
   const sources = [{ name: RESULTS_SOURCE.name, score: (m) => openFootballFinalScore(m, ofMap) }]
-  const [live, backup] = await Promise.allSettled([fetchLive(), fetchBackup()])
-  if (live.status === 'fulfilled') {
-    sources.push({ name: LIVE_SOURCE.name, score: (m) => espnFinalScore(m, live.value) })
+  if (liveMap) {
+    sources.push({ name: LIVE_SOURCE.name, score: (m) => espnFinalScore(m, liveMap) })
   } else {
     console.log(`Cross-check: couldn't reach ${LIVE_SOURCE.name}.`)
   }
-  if (backup.status === 'fulfilled') {
-    sources.push({ name: BACKUP_SOURCE.name, score: (m) => sdbFinalScore(m, backup.value) })
+  if (backupMap) {
+    sources.push({ name: BACKUP_SOURCE.name, score: (m) => sdbFinalScore(m, backupMap) })
   } else {
     console.log(`Cross-check: couldn't reach ${BACKUP_SOURCE.name}.`)
   }
