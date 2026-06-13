@@ -90,6 +90,40 @@ describe('App renders (smoke test)', () => {
     render(<App />)
     expect(screen.getByText(/Next match|Your next match|Live now/)).toBeInTheDocument()
   })
+
+  it('folds days that have already passed and expands them on click', () => {
+    // Pin "now" mid-tournament so the June 11 opener is firmly in the past.
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-06-20T16:00:00Z'))
+    try {
+      render(<App />)
+      // The opening day's header is a toggle, collapsed by default, and its
+      // match cards aren't rendered while folded.
+      const opener = screen.getByRole('button', { name: /June 11, 2026/ })
+      expect(opener).toHaveAttribute('aria-expanded', 'false')
+      const openerDay = opener.closest('section.day')
+      expect(within(openerDay).queryByRole('button', { name: /Details/ })).not.toBeInTheDocument()
+      // Clicking expands it and reveals the matches.
+      fireEvent.click(opener)
+      expect(opener).toHaveAttribute('aria-expanded', 'true')
+      expect(within(openerDay).getAllByRole('button', { name: /Details/ }).length).toBeGreaterThan(0)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('keeps today and future days expanded by default', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-06-20T16:00:00Z'))
+    try {
+      render(<App />)
+      // The final (July 19, 2026) is in the future — its day starts open.
+      const futureDay = screen.getByRole('button', { name: /July 19, 2026/ })
+      expect(futureDay).toHaveAttribute('aria-expanded', 'true')
+    } finally {
+      vi.useRealTimers()
+    }
+  })
 })
 
 describe('Follow teams', () => {

@@ -326,6 +326,35 @@ select {
   color: var(--gold);
   margin: 0;
 }
+.day-toggle {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+}
+.day-chev {
+  color: var(--text-faint);
+  font-size: 0.78rem;
+  line-height: 1;
+  flex: none;
+}
+.day-toggle:hover h2 {
+  color: var(--accent);
+}
+.day-count {
+  font-size: 0.74rem;
+  color: var(--text-faint);
+  white-space: nowrap;
+}
+.day.collapsed .day-header {
+  margin-bottom: 0;
+}
 .day-spoiler {
   background: transparent;
   border: 1px solid var(--border);

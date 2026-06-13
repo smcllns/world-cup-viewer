@@ -1,0 +1,44 @@
+name: OpenFootball autofill
+
+# Contributes confirmed group-stage final scores back to the upstream source
+# (openfootball/worldcup, 2026--usa/cup.txt). Runs every 5 minutes during the
+# tournament so a freshly-finished match is filled in within minutes, not up to
+# an hour; for every finished match where ESPN and TheSportsDB agree on the final
+# and OpenFootball hasn't recorded it yet, it edits the cup.txt match line (score
+# + half-time + scorers) and commits to master. Idempotent and conservative — the
+# job no-ops cheaply when nothing is pending. See scripts/openfootball-autofill.mjs.
+#
+# NOTE: 5 minutes is the minimum cron granularity GitHub allows, and scheduled
+# runs are best-effort — under platform load they can be delayed several minutes
+# or skipped, so treat the cadence as "within ~5-15 min of a finish".
+#
+# Requires the OF_PUSH_TOKEN secret: a fine-grained PAT with Contents: write on
+# openfootball/worldcup. Without it the job runs as a harmless dry run (reports
+# what it WOULD write, pushes nothing), so it's safe to enable before the secret
+# exists. Manually runnable from the Actions tab.
+
+on:
+  schedule:
+    - cron: '*/5 * * * *' # every 5 minutes (GitHub's minimum cron granularity)
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Preview only (no push)'
+        type: boolean
+        default: false
+
+jobs:
+  autofill:
+    name: Fill confirmed finals upstream
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: node scripts/openfootball-autofill.mjs
+        env:
+          OF_PUSH_TOKEN: ${{ secrets.OF_PUSH_TOKEN }}
+          DRY_RUN: ${{ inputs.dry_run && '1' || '' }}

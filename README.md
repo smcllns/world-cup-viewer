@@ -90,6 +90,37 @@ Sports (group draw).
   this role and rejected — no 2026 data and no CORS, so a browser-only app can
   neither read nor validate against it.)
 
+### Giving back to OpenFootball
+
+OpenFootball commits results by hand, so it occasionally lags after a match.
+`npm run of:edits` reuses the same three-source reconciliation to list finals
+that the fallbacks already carry but OpenFootball doesn't yet — printed as
+paste-ready `cup.txt` lines (`Home  FT  Away`), ranked by confidence (both
+fallbacks agree / one only / they disagree), plus any match where OpenFootball
+disagrees with the fallbacks. The maintainer
+([openfootball/worldcup.json#23](https://github.com/openfootball/worldcup.json/issues/23))
+welcomes edit-in-place fixes; this script tells you exactly which lines to fill
+in at [`2026--usa/cup.txt`](https://github.com/openfootball/worldcup/blob/master/2026--usa/cup.txt).
+It only reads feeds and prints — it never writes anything.
+
+`npm run of:autofill` is the automated counterpart: it makes the same edits and
+commits them to `cup.txt` for you. It's deliberately conservative — only
+**group-stage** matches (knockouts can go to a.e.t./penalties, which it leaves
+for manual review), only when **both** fallbacks agree on the final, and only on
+a line still reading `Home v Away` (so re-running never double-edits). Half-time
+and goalscorers come from ESPN and are written in the file's house style
+(`Home  FT (HT)  Away` + scorer block, `(pen.)`/`(OG)` markers, CRLF-safe);
+if the goals don't reconcile with the agreed final it writes a valid score-only
+line. All of that formatting/placement logic lives in
+[`scripts/cuptxt.mjs`](./scripts/cuptxt.mjs) and is unit-tested
+([`test/cuptxt.test.js`](./test/cuptxt.test.js)). The
+[workflow](./.github/workflows/openfootball-autofill.yml) runs it every 5 minutes
+during the tournament (GitHub's minimum cron granularity — scheduled runs are
+best-effort, so figure "within ~5–15 min of a finish"); it needs an
+`OF_PUSH_TOKEN` secret (a fine-grained PAT with Contents: write on
+`openfootball/worldcup`). Without that secret — or with `DRY_RUN=1` — it previews
+the edits and pushes nothing.
+
 See [`NEWS.md`](./NEWS.md) for the changelog.
 
 ## Credits

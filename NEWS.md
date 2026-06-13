@@ -5,6 +5,47 @@ calendar day; bullet points capture every change made that day (features, fixes,
 data/source updates, deployment). Newest day on top.
 
 ## 2026-06-13
+- **`npm run of:autofill` + hourly workflow — automatically give confirmed
+  finals back to OpenFootball:** the write-capable counterpart to `of:edits`.
+  For every finished match where ESPN + TheSportsDB agree on the final and
+  OpenFootball is missing it, it edits the `cup.txt` line (score + half-time +
+  goalscorers, in the file's house style) and commits to `openfootball/worldcup`
+  master. Conservative: group stage only (knockouts can be a.e.t./penalties —
+  surfaced for manual review), ✓✓-confirmed only, and idempotent (only touches a
+  line still reading `Home v Away`). Half-time/scorers come from ESPN; if they
+  don't reconcile with the agreed final it writes a valid score-only line. All
+  formatting + placement is isolated in [`scripts/cuptxt.mjs`](./scripts/cuptxt.mjs)
+  and covered by [`test/cuptxt.test.js`](./test/cuptxt.test.js) (19 tests:
+  FT/HT, `(pen.)`/`(OG)`, repeat-scorer comma-merge, one-sided vs two-sided
+  blocks, orientation to the file's team order, special characters, CRLF
+  endings, idempotency, placement). The
+  [workflow](./.github/workflows/openfootball-autofill.yml) runs every 5 minutes
+  (GitHub's minimum cron granularity) so a freshly-finished match is filled in
+  within minutes; it needs an `OF_PUSH_TOKEN` secret (PAT, Contents: write);
+  without it, it dry-runs. Format conventions were derived from a survey of the
+  2006–2026 cup.txt files.
+- **`npm run of:edits` — give late finals back to OpenFootball:** OpenFootball
+  commits results by hand and sometimes lags after a match. This new script
+  ([`scripts/openfootball-edits.mjs`](./scripts/openfootball-edits.mjs)) reuses
+  the app's existing three-source reconciliation to list finished matches whose
+  final OpenFootball hasn't posted yet but ESPN and/or TheSportsDB have —
+  printed as paste-ready `cup.txt` lines (`Home  FT  Away`), ranked ✓✓ both
+  fallbacks agree / ⚠ one fallback only / ✗ fallbacks disagree, plus any match
+  where OpenFootball's score disagrees with the fallbacks (possible
+  corrections). It's the follow-through on the maintainer's edit-in-place invite
+  in [worldcup.json#23](https://github.com/openfootball/worldcup.json/issues/23);
+  read-only (never writes). Its first real catch — Qatar 1–1 Switzerland
+  (Jun 13), confirmed by ESPN + TheSportsDB — was contributed back to the
+  upstream source ([cup.txt edit](https://github.com/openfootball/worldcup/commit/cb9171670e19695bb95625683ead74d9d469e55e)).
+  Note the edit target is `openfootball/worldcup`'s `2026--usa/cup.txt`, **not**
+  `worldcup.json` (bot-regenerated, so direct JSON edits get clobbered).
+- **Foldable days on the Schedule:** each day section now collapses/expands from
+  its header (chevron + match count), and days that have already passed fold shut
+  by default — so the page opens on what's still to come instead of a long scroll
+  of finished matches. "Past" is judged against today in the viewer's selected
+  timezone; expanding/collapsing a day overrides the default for that day. The
+  per-day "Hide scores" spoiler toggle is unchanged and only shows while a day is
+  expanded. (Weeks in the Week view are next.)
 - **Real soccer ball across the share image and all app icons:** the Open
   Graph/Twitter preview (`public/og-image.png`/`.svg`) and the PWA/home-screen
   icons used an abstract mark that didn't read as a ball. Swapped in the

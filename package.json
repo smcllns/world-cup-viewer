@@ -10,7 +10,9 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "check:feed": "node scripts/check-feed-freshness.mjs"
+    "check:feed": "node scripts/check-feed-freshness.mjs",
+    "of:edits": "node scripts/openfootball-edits.mjs",
+    "of:autofill": "node scripts/openfootball-autofill.mjs"
   },
   "dependencies": {
     "react": "^18.3.1",

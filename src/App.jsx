@@ -86,6 +86,9 @@ export default function App() {
   const [filtersOpen, setFiltersOpen] = useState(() => countActiveFilters(initial.filters) > 0)
   // Per-day spoiler overrides: dayKey -> bool. Undefined means "follow global".
   const [dayOverrides, setDayOverrides] = useState({})
+  // Per-day fold overrides: dayKey -> bool. Undefined means "follow default"
+  // (past days collapsed, today + future expanded).
+  const [collapsedDays, setCollapsedDays] = useState({})
 
   // Results merged into the static schedule from three independent sources:
   //   • OpenFootball (`results`) — source of record (post-match final scores).
@@ -160,6 +163,14 @@ export default function App() {
 
   const toggleDay = (key) =>
     setDayOverrides((o) => ({ ...o, [key]: !dayHidden(key) }))
+
+  // Today's dayKey in the viewer's timezone — days before it are "past" and
+  // fold closed by default so the schedule opens on what's still to come.
+  const todayKey = useMemo(() => dayKey(Date.now(), tz), [tz])
+  const dayCollapsed = (key) =>
+    collapsedDays[key] !== undefined ? collapsedDays[key] : key < todayKey
+  const toggleCollapsed = (key) =>
+    setCollapsedDays((c) => ({ ...c, [key]: !dayCollapsed(key) }))
 
   const activeCount = useMemo(() => countActiveFilters(filters), [filters])
 
@@ -350,19 +361,34 @@ export default function App() {
             )}
             {days.map(([key, matches]) => {
               const hidden = dayHidden(key)
+              const collapsed = dayCollapsed(key)
               return (
-                <section key={key} id={`day-${key}`} className="day">
+                <section key={key} id={`day-${key}`} className={`day${collapsed ? ' collapsed' : ''}`}>
                   <div className="day-header">
-                    <h2>{formatDateLong(matches[0].ko, tz)}</h2>
-                    <button className="day-spoiler" onClick={() => toggleDay(key)}>
-                      {hidden ? '🙈 Show scores' : '👁 Hide scores'}
+                    <button
+                      className="day-toggle"
+                      onClick={() => toggleCollapsed(key)}
+                      aria-expanded={!collapsed}
+                    >
+                      <span className="day-chev" aria-hidden="true">{collapsed ? '▸' : '▾'}</span>
+                      <h2>{formatDateLong(matches[0].ko, tz)}</h2>
+                      <span className="day-count">
+                        {matches.length} match{matches.length === 1 ? '' : 'es'}
+                      </span>
                     </button>
+                    {!collapsed && (
+                      <button className="day-spoiler" onClick={() => toggleDay(key)}>
+                        {hidden ? '🙈 Show scores' : '👁 Hide scores'}
+                      </button>
+                    )}
                   </div>
-                  <div className="day-matches">
-                    {matches.map((m) => (
-                      <MatchCard key={m.num} match={m} tz={tz} feed={filters.feed} hidden={hidden} />
-                    ))}
-                  </div>
+                  {!collapsed && (
+                    <div className="day-matches">
+                      {matches.map((m) => (
+                        <MatchCard key={m.num} match={m} tz={tz} feed={filters.feed} hidden={hidden} />
+                      ))}
+                    </div>
+                  )}
                 </section>
               )
             })}
