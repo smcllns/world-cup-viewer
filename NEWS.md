@@ -4,6 +4,20 @@ A dated changelog for the World Cup 2026 Schedule Viewer. Each heading is a
 calendar day; bullet points capture every change made that day (features, fixes,
 data/source updates, deployment). Newest day on top.
 
+## 2026-06-13
+- **Share image now shows a real soccer ball:** the Open Graph/Twitter preview
+  (`public/og-image.png`/`.svg`, shown when the link is shared) used an abstract
+  mark — a single pentagon with five spokes — that didn't read as a ball.
+  Replaced it with a proper classic (Telstar) soccer ball: a central black
+  pentagon, five black pentagons around the rim, and connecting seams. PNG
+  re-rendered from the SVG with headless Chrome at 1200×630.
+- **Same ball propagated to the home-screen/PWA icons:** rebuilt `icon.svg` with
+  the new classic-ball geometry and re-rendered `icon-512.png` (also the
+  maskable icon — ball kept inside the safe zone), `icon-192.png`, and
+  `apple-touch-icon.png` (180×180) from it. The `index.html` favicon stays the
+  ⚽ emoji — the detailed seams don't read at 16px, and the emoji is crisper
+  there.
+
 ## 2026-06-11
 - **Doc fix — README no longer claims subs in the timeline:** the Match Detail
   timeline advertised substitutions (🔁), but the ESPN *scoreboard* feed the app
