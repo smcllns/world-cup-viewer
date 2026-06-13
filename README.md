@@ -97,6 +97,10 @@ See [`NEWS.md`](./NEWS.md) for the changelog.
 Created by [Chester Ismay](https://chester.rbind.io). Source on
 [GitHub](https://github.com/ismayc/world-cup-viewer).
 
+The soccer ball in the app icons and share image is from
+[Google Noto Emoji](https://github.com/googlefonts/noto-emoji)
+(Apache License 2.0).
+
 ## Disclaimer
 
 An unofficial, non-commercial fan project. **Not affiliated with, endorsed by, or
