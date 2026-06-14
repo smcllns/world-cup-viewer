@@ -5,6 +5,15 @@ calendar day; bullet points capture every change made that day (features, fixes,
 data/source updates, deployment). Newest day on top.
 
 ## 2026-06-14
+- **Fix: autofill couldn't sync Türkiye/Czechia matches (name spelling).** Our app
+  and the feeds use the official FIFA names (Türkiye, Czechia), but cup.txt's match
+  lines use simpler spellings (Turkey, Czech Republic) — so the writer searched for
+  e.g. "Australia v Türkiye", didn't find the "Australia v Turkey" line, and
+  silently skipped (this is why Australia 2–0 Türkiye didn't sync overnight despite
+  ESPN confirming it). Added a `cupName` alias map so the line lookup uses cup.txt's
+  spelling, with a test. Australia 2–0 Türkiye
+  ([commit](https://github.com/openfootball/worldcup/commit/7b779a6837a69b06c391308b0c7aab82717ea48a))
+  synced once fixed.
 - **Fix: live matches stuck on "Live" with no score/clock.** The live overlay
   used ESPN's default scoreboard (no date param), which returns only one date's
   slate and can lag a day — so a late-night match (e.g. a midnight-ET kickoff that

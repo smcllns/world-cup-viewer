@@ -8,6 +8,7 @@ import {
   parseClock,
   orientFt,
   lineRegex,
+  cupName,
 } from '../scripts/cuptxt.mjs'
 
 // A slice of cup.txt that mirrors the real file's exact spacing — scored lines,
@@ -308,6 +309,28 @@ describe('applyEdit — knockouts (a.e.t. / penalties)', () => {
     })
     expect(res.applied).toBe(false)
     expect(res.reason).toBe('knockout-unreconciled')
+  })
+})
+
+describe('cup.txt name spelling', () => {
+  it('maps the app’s official names to cup.txt’s match-line spellings', () => {
+    expect(cupName('Türkiye')).toBe('Turkey')
+    expect(cupName('Czechia')).toBe('Czech Republic')
+    expect(cupName('Brazil')).toBe('Brazil') // unaffected
+  })
+
+  it('matches a cup.txt line by its spelling even when given the app name', () => {
+    // The fixture line reads "Czech Republic v South Africa"; our feeds say "Czechia".
+    // (This is the class of bug that left Australia v Türkiye unsynced.)
+    const res = applyEdit(FIXTURE, {
+      t1: 'Czechia',
+      t2: 'South Africa',
+      ft: [2, 0],
+      t1Goals: [goal('A', 30), goal('B', 70)],
+      t2Goals: [],
+    })
+    expect(res.applied).toBe(true)
+    expect(res.newBlock.split('\n')[0]).toContain('Czech Republic    2-0 (1-0) South Africa')
   })
 })
 

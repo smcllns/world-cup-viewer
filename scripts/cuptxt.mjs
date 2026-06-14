@@ -10,6 +10,16 @@ import { normalizeTeam } from '../src/services/results.js'
 export const HOME_INDENT = ' '.repeat(20)
 export const AWAY_INDENT = ' '.repeat(23)
 
+// Our app uses the official FIFA names for a couple of teams, but cup.txt's match
+// lines use simpler English spellings — so a line lookup by our name would miss.
+// Map our name → the spelling cup.txt actually writes. (cup.txt itself notes the
+// official forms in a trivia comment; the match lines stay simple.)
+const CUP_TXT_ALIASES = {
+  Türkiye: 'Turkey',
+  Czechia: 'Czech Republic',
+}
+export const cupName = (team) => CUP_TXT_ALIASES[team] || team
+
 // ESPN's team-name divergences from ours (mirrors src/services/espn.js).
 const ESPN_ALIASES = {
   'United States': 'USA',
@@ -133,7 +143,7 @@ export function applyEdit(text, spec) {
     [t1, t2, true],
     [t2, t1, false],
   ]) {
-    const m = lineRegex(home, away).exec(text)
+    const m = lineRegex(cupName(home), cupName(away)).exec(text)
     if (m) {
       hit = m
       homeIsT1 = isT1
