@@ -5,6 +5,20 @@ calendar day; bullet points capture every change made that day (features, fixes,
 data/source updates, deployment). Newest day on top.
 
 ## 2026-06-14
+- **Manual-review alerts for knockouts the autofill can't auto-sync:** when a
+  knockout is confirmed but can't be written safely (ESPN/TheSportsDB disagree on
+  the penalty tally, goals don't reconcile, or ESPN has no goal detail), the
+  workflow opens a **deduplicated GitHub issue** assigned to the maintainer —
+  raised once (not every 5-minute run), so it's a trackable to-do rather than
+  email spam. Bumped `action-send-mail` to v17 (Node 24; clears the deprecation
+  warning).
+- **Email notification on every upstream sync:** when the autofill workflow
+  actually commits a new final to `openfootball/worldcup`, it now emails
+  chester.ismay@gmail.com with the match(es), commit link, and run link. The
+  script emits step outputs only on a real push (no commit → no email; deferred
+  /manual-review items don't email). The email step uses Gmail SMTP and needs two
+  repo secrets — `MAIL_USERNAME` (the Gmail address) and `MAIL_PASSWORD` (a Gmail
+  App Password); if they're absent the step is skipped and the sync still runs.
 - **Autofill now handles knockout a.e.t./penalties** (was group-stage only): the
   OpenFootball autofill writer renders knockout results in cup.txt's full house
   style — `1-1 a.e.t. (1-0, 1-1), 4-2 pen.` — with extra-time-aware half-time and
