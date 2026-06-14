@@ -5,6 +5,13 @@ calendar day; bullet points capture every change made that day (features, fixes,
 data/source updates, deployment). Newest day on top.
 
 ## 2026-06-14
+- **Fix: live matches stuck on "Live" with no score/clock.** The live overlay
+  used ESPN's default scoreboard (no date param), which returns only one date's
+  slate and can lag a day — so a late-night match (e.g. a midnight-ET kickoff that
+  ESPN files under the next date) was missing from it, and the card fell back to a
+  time-based "Live" with no score or clock. `fetchLive` now queries the dates
+  around now (yesterday/today/tomorrow, UTC) and merges them, so live games show
+  their score and clock again. (Caught live on Australia 1–0 Türkiye, 43'.)
 - **Self-perpetuating autofill loop + a big test pass (PR):** GitHub's scheduler
   fires too sparsely (~once/2h) to rely on, so a loop run now **re-dispatches the
   next one** while another match window is within ~5.5h — coverage during a match

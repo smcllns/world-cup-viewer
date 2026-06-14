@@ -59,9 +59,23 @@ describe('fetchLive (parsing ESPN shape)', () => {
     expect(usa.state).toBe('pre')
   })
 
-  it('throws on a non-OK response', async () => {
+  it('throws only when every scoreboard date request fails', async () => {
+    // fetchLive now queries a few dates around now (yesterday/today/tomorrow) and
+    // merges, so it's best-effort: it rejects only if none of them are reachable.
     global.fetch = vi.fn(async () => ({ ok: false, status: 502 }))
-    await expect(fetchLive()).rejects.toThrow(/502/)
+    await expect(fetchLive()).rejects.toThrow(/scoreboard|unreachable/i)
+  })
+
+  it('still returns a map when only one date slate responds', async () => {
+    const feed = {
+      events: [
+        event({ date: '2026-06-14T04:00Z', state: 'in', clock: "43'", home: 'Australia', hs: '1', away: 'Türkiye', as: '0' }),
+      ],
+    }
+    let n = 0
+    global.fetch = vi.fn(async () => (n++ === 0 ? { ok: true, json: async () => feed } : { ok: false, status: 500 }))
+    const map = await fetchLive()
+    expect(map.get(pairKey('Australia', 'Türkiye')).score).toEqual([1, 0])
   })
 })
 

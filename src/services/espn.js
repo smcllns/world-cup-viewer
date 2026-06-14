@@ -97,17 +97,45 @@ function parseEspnEvents(comp, homeId, awayId) {
 // twice: by team pair (unique per tournament for played matches; survives
 // simultaneous group kickoffs) and by kickoff instant (lets us match knockout
 // games whose teams our static schedule still shows as placeholders).
-export async function fetchLive(signal) {
-  const res = await fetch(LIVE_SOURCE.url, { signal, cache: 'no-store' })
-  if (!res.ok) throw new Error(`Live request failed (HTTP ${res.status})`)
-  let data
-  try {
-    data = await res.json()
-  } catch {
-    throw new Error('Live response was not valid JSON')
+// YYYYMMDD for yesterday/today/tomorrow (UTC) — a small window around "now".
+function scoreboardDates(now = new Date()) {
+  const ymd = (off) =>
+    new Date(now.getTime() + off * 86_400_000).toISOString().slice(0, 10).replace(/-/g, '')
+  return [ymd(-1), ymd(0), ymd(1)]
+}
+
+// ESPN's default scoreboard returns only a single date's slate and can lag a day,
+// so a late-night match (filed under a different ESPN date) is missing from it —
+// which left such games showing "Live" with no score or clock in the app. Fetch
+// the dates around now explicitly and merge their events (deduped).
+async function scoreboardEvents(signal) {
+  const results = await Promise.allSettled(
+    scoreboardDates().map((d) =>
+      fetch(`${LIVE_SOURCE.url}?dates=${d}`, { signal, cache: 'no-store' }).then((r) =>
+        r.ok ? r.json() : null,
+      ),
+    ),
+  )
+  let reached = false
+  const seen = new Set()
+  const events = []
+  for (const r of results) {
+    if (r.status !== 'fulfilled' || !r.value) continue
+    reached = true
+    for (const ev of r.value.events || []) {
+      const id = ev.id ?? ev.uid ?? ev.date
+      if (id && seen.has(id)) continue
+      if (id) seen.add(id)
+      events.push(ev)
+    }
   }
+  if (!reached) throw new Error('Live request failed (all scoreboard dates unreachable)')
+  return events
+}
+
+export async function fetchLive(signal) {
   const map = new Map()
-  for (const ev of data.events || []) {
+  for (const ev of await scoreboardEvents(signal)) {
     const comp = ev.competitions?.[0]
     if (!comp || !Array.isArray(comp.competitors)) continue
     const home = comp.competitors.find((c) => c.homeAway === 'home')
