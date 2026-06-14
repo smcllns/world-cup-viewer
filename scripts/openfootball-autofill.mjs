@@ -36,6 +36,7 @@
 //       DRY_RUN=1 node scripts/openfootball-autofill.mjs  (preview only)
 
 import { execSync } from 'node:child_process'
+import { appendFileSync } from 'node:fs'
 import { MATCHES } from '../src/data/matches.js'
 import { fetchResults, applyResults, openFootballFinalScore, normalizeTeam } from '../src/services/results.js'
 import { fetchLive, applyLive, espnFinalScore, LIVE_SOURCE } from '../src/services/espn.js'
@@ -271,7 +272,23 @@ async function main() {
     process.exit(1)
   }
   const res = await put.json()
-  console.log(`\nCommitted ${applied.length} result(s): ${res.commit?.html_url || res.commit?.sha}\n`)
+  const url = res.commit?.html_url || res.commit?.sha || ''
+  console.log(`\nCommitted ${applied.length} result(s): ${url}\n`)
+
+  // Emit step outputs (only on an actual commit) so the workflow can email a
+  // notification for the newly-synced finals. No commit → no outputs → no email.
+  setOutput('count', String(applied.length))
+  setOutput('summary', applied.map((a) => a.label).join('; '))
+  setOutput('details', applied.map((a) => `- ${a.label}`).join('\n'))
+  setOutput('commit_url', url)
+}
+
+// Append a (possibly multi-line) GitHub Actions step output. No-op locally.
+function setOutput(name, value) {
+  const file = process.env.GITHUB_OUTPUT
+  if (!file) return
+  const delim = `__EOF_${name}__`
+  appendFileSync(file, `${name}<<${delim}\n${value}\n${delim}\n`)
 }
 
 main()

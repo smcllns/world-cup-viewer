@@ -38,7 +38,34 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: node scripts/openfootball-autofill.mjs
+      - id: autofill
+        run: node scripts/openfootball-autofill.mjs
         env:
           OF_PUSH_TOKEN: ${{ secrets.OF_PUSH_TOKEN }}
           DRY_RUN: ${{ inputs.dry_run && '1' || '' }}
+
+      # Email chester.ismay@gmail.com only when a NEW final was actually committed
+      # upstream (the script sets `count` only on a real push). Needs MAIL_USERNAME
+      # (the Gmail address) and MAIL_PASSWORD (a Gmail App Password) secrets; if
+      # they're absent the step is skipped, so the sync still runs without email.
+      - name: Email on new sync
+        if: steps.autofill.outputs.count && steps.autofill.outputs.count != '0' && env.MAIL_PASSWORD != ''
+        uses: dawidd6/action-send-mail@v3
+        env:
+          MAIL_PASSWORD: ${{ secrets.MAIL_PASSWORD }}
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          secure: true
+          username: ${{ secrets.MAIL_USERNAME }}
+          password: ${{ secrets.MAIL_PASSWORD }}
+          from: World Cup Autofill <${{ secrets.MAIL_USERNAME }}>
+          to: chester.ismay@gmail.com
+          subject: "⚽ Synced ${{ steps.autofill.outputs.count }} result(s) to OpenFootball: ${{ steps.autofill.outputs.summary }}"
+          body: |
+            New final score(s) synced to openfootball/worldcup (2026--usa/cup.txt):
+
+            ${{ steps.autofill.outputs.details }}
+
+            Commit: ${{ steps.autofill.outputs.commit_url }}
+            Workflow run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}

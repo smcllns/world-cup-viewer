@@ -124,6 +124,12 @@ best-effort, so figure "within ~5–15 min of a finish"); it needs an
 `openfootball/worldcup`). Without that secret — or with `DRY_RUN=1` — it previews
 the edits and pushes nothing.
 
+When the workflow actually commits a new final upstream it emails a notification
+(match, commit link, run link). That step uses Gmail SMTP and is gated on a real
+push, so it only fires on an actual sync; it needs `MAIL_USERNAME` (a Gmail
+address) and `MAIL_PASSWORD` (a [Gmail App Password](https://myaccount.google.com/apppasswords))
+as repo secrets, and is skipped if they're absent.
+
 See [`NEWS.md`](./NEWS.md) for the changelog.
 
 ## Credits
