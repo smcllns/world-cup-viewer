@@ -26,6 +26,10 @@ on:
         description: 'Preview only (no push)'
         type: boolean
         default: false
+      test_email:
+        description: 'Send a test notification email and skip the sync'
+        type: boolean
+        default: false
 
 jobs:
   autofill:
@@ -37,8 +41,36 @@ jobs:
         with:
           node-version: 22
           cache: npm
+      # Test path: send one notification email and stop (verifies the mail
+      # secrets without waiting for a real sync). `workflow_dispatch` with
+      # test_email=true.
+      - name: Send test email
+        if: inputs.test_email && env.MAIL_PASSWORD != ''
+        uses: dawidd6/action-send-mail@v3
+        env:
+          MAIL_PASSWORD: ${{ secrets.MAIL_PASSWORD }}
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          secure: true
+          username: ${{ secrets.MAIL_USERNAME }}
+          password: ${{ secrets.MAIL_PASSWORD }}
+          from: World Cup Autofill <${{ secrets.MAIL_USERNAME }}>
+          to: chester.ismay@gmail.com
+          subject: "✅ Test — World Cup autofill email notifications are working"
+          body: |
+            This is a test from the OpenFootball autofill workflow.
+
+            If you're reading this, MAIL_USERNAME / MAIL_PASSWORD are set correctly
+            and you'll get an email each time a new final score is synced to
+            openfootball/worldcup.
+
+            Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
       - run: npm ci
+        if: ${{ !inputs.test_email }}
       - id: autofill
+        if: ${{ !inputs.test_email }}
         run: node scripts/openfootball-autofill.mjs
         env:
           OF_PUSH_TOKEN: ${{ secrets.OF_PUSH_TOKEN }}
