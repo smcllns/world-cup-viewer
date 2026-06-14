@@ -21,7 +21,7 @@ const CUP_TXT_ALIASES = {
 export const cupName = (team) => CUP_TXT_ALIASES[team] || team
 
 // ESPN's team-name divergences from ours (mirrors src/services/espn.js).
-const ESPN_ALIASES = {
+export const ESPN_ALIASES = {
   'United States': 'USA',
   'Korea Republic': 'South Korea',
   'IR Iran': 'Iran',
@@ -105,22 +105,27 @@ const validGoals = (goals, n) => goals.length === n && goals.every((g) => g.name
 export function buildScore([h, a], opts = null) {
   if (!opts) return `${h}-${a}`
   if (opts.aet) {
-    let s = `${h}-${a} a.e.t. (${opts.ht[0]}-${opts.ht[1]}, ${opts.ft90[0]}-${opts.ft90[1]})`
+    // openfootball's two-paren a.e.t. form is (score-at-90, half-time) — the
+    // FULL-90 score first, then HT (verified against 2014–2022 cup_finals).
+    let s = `${h}-${a} a.e.t. (${opts.ft90[0]}-${opts.ft90[1]}, ${opts.ht[0]}-${opts.ht[1]})`
     if (opts.pens) s += `, ${opts.pens[0]}-${opts.pens[1]} pen.`
     return s
   }
   return `${h}-${a} (${opts.ht[0]}-${opts.ht[1]})`
 }
 
-// Regex for an UNSCORED match line "  <time> UTC<off>   Home  v Away   @ Venue".
-// Captures: 1=prefix(time) 2=home 3=gap 4=gap 5=away 6=" @ venue…". The tail is
-// [^\r\n]* (not .*$) so it stops cleanly at the line end on CRLF files without
-// swallowing the carriage return — letting the writer keep endings consistent.
+// Regex for an UNSCORED match line, e.g. "  12:00 UTC-6  Home  v Away  @ Venue"
+// or a knockout line with a "(NN)" match-number prefix in cup_finals.txt, e.g.
+// "  (89) 17:00 UTC-4  Home v Away  @ Venue". Captures: 1=prefix (incl. optional
+// "(NN)" and the time) 2=home 3=gap 4=gap 5=away 6=" @ venue…". The tail is
+// [^\r\n]* (not .*$) so it stops at the line end on CRLF files without swallowing
+// the carriage return; the optional "(NN)" lives inside the prefix so it's
+// preserved verbatim in the rewrite.
 export function lineRegex(home, away) {
   // Whitespace classes are [ \t] (not \s) so the match can't reach across line
   // boundaries and accidentally swallow a preceding blank line into the prefix.
   return new RegExp(
-    `^([ \\t]*\\d{1,2}:\\d{2}[ \\t]+UTC\\S+[ \\t]+)(${esc(home)})([ \\t]+)v([ \\t]+)(${esc(away)})([ \\t]+@[^\\r\\n]*)`,
+    `^([ \\t]*(?:\\(\\d+\\)[ \\t]+)?\\d{1,2}:\\d{2}[ \\t]+UTC\\S+[ \\t]+)(${esc(home)})([ \\t]+)v([ \\t]+)(${esc(away)})([ \\t]+@[^\\r\\n]*)`,
     'm',
   )
 }

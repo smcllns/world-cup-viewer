@@ -5,6 +5,34 @@ calendar day; bullet points capture every change made that day (features, fixes,
 data/source updates, deployment). Newest day on top.
 
 ## 2026-06-14
+- **Knockout autofill would not have worked — two critical fixes (PR):** a deep
+  scan of openfootball's 1930–2026 files (vs our writer) found that 2026 knockouts
+  live in a **separate file** `2026--usa/cup_finals.txt` (with a `(NN)`
+  match-number prefix on each line), not `cup.txt` — so the autofill (which only
+  edited `cup.txt`, with a regex that choked on `(NN)`) would have **silently
+  no-op'd every knockout result**. Now it writes group results to `cup.txt` and
+  knockouts to `cup_finals.txt` (one commit per file), and the line regex accepts
+  the optional `(NN)` prefix. Also fixed the **a.e.t. paren order**: real files
+  write `(score-at-90, half-time)` — e.g. `3-3 a.e.t. (2-2, 2-0)` — but our writer
+  (and the test that encoded it) had it reversed. Froze a real `cup_finals.txt`
+  snapshot + tests (every knockout match number is present; `(NN)`-prefixed line
+  matching; corrected a.e.t. order against the 2022 final). The scan also
+  *confirmed* our `(OG)`, `(pen.)`, shootout, and stoppage-minute formats are
+  correct for the current files. 169 tests.
+- **Hardening pass — kill the mapping-mismatch bug class (PR):** an audit (driven
+  by the two name/date bugs below) found and fixed more of the same class:
+  (1) **TheSportsDB spells it "Bosnia-Herzegovina"** (hyphen), which our aliases
+  didn't map — Bosnia's matches would silently fail the cross-check; (2) the
+  autofill's `espnGoals` still fetched a **single ESPN date** (the lag the live
+  fix addressed) — now uses the ±1-day window so a midnight-ET match's
+  scorers/extra-time aren't dropped; (3) `applyResults` could write a **reversed
+  score** if a feed name matched neither team — now it skips. New tests pin every
+  **real captured ESPN + TheSportsDB spelling** to a known team (would've caught
+  both prior bugs), assert the duplicated ESPN alias maps stay in sync, exercise
+  `applyEdit` against a frozen real cup.txt snapshot (CRLF + idempotency), and
+  check static-data integrity. Plus `npm run check:sync` — a runtime drift guard
+  (wired into the hourly feed-freshness job) that fails if upstream cup.txt renames
+  a team so the autofill can't find its line. 146 tests.
 - **Fix: autofill couldn't sync Türkiye/Czechia matches (name spelling).** Our app
   and the feeds use the official FIFA names (Türkiye, Czechia), but cup.txt's match
   lines use simpler spellings (Turkey, Czech Republic) — so the writer searched for

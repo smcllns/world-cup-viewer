@@ -38,17 +38,18 @@
 import { execSync } from 'node:child_process'
 import { MATCHES } from '../src/data/matches.js'
 import { fetchResults, applyResults, openFootballFinalScore } from '../src/services/results.js'
-import { fetchLive, applyLive, espnFinalScore, LIVE_SOURCE } from '../src/services/espn.js'
+import { fetchLive, applyLive, espnFinalScore, LIVE_SOURCE, scoreboardDates } from '../src/services/espn.js'
 import { fetchBackup, sdbFinalScore, sdbFinalPens } from '../src/services/thesportsdb.js'
 import { applyEdit, orientFt } from './cuptxt.mjs'
 import { classifyMatch, parseEspnEventDetail, eqFt } from './autofill-core.mjs'
 
 const REPO = 'openfootball/worldcup'
-const FILE = '2026--usa/cup.txt'
+const DIR = '2026--usa'
+// Group-stage results live in cup.txt; knockouts in cup_finals.txt (whose lines
+// carry a "(NN)" match-number prefix). Target the right file per match.
+const fileFor = (m) => `${DIR}/${m.stage === 'Group' ? 'cup.txt' : 'cup_finals.txt'}`
 
 const minutesSince = (iso) => (Date.now() - new Date(iso).getTime()) / 60_000
-const etDate = (iso) =>
-  new Date(iso).toLocaleDateString('en-CA', { timeZone: 'America/New_York' }).replace(/-/g, '')
 
 const dayCache = new Map()
 async function eventsForDate(yyyymmdd) {
@@ -64,11 +65,29 @@ async function eventsForDate(yyyymmdd) {
   return evs
 }
 
+// All ESPN events for the dates around a match's kickoff (UTC ±1 day, same window
+// as fetchLive), deduped — so a match ESPN files under an adjacent date isn't
+// missed (the single-date version dropped midnight-ET games' scorer/extra-time
+// detail).
+async function espnEventsAround(ko) {
+  const seen = new Set()
+  const events = []
+  for (const d of scoreboardDates(new Date(ko))) {
+    for (const ev of await eventsForDate(d)) {
+      const id = ev.id ?? ev.uid ?? ev.date
+      if (id && seen.has(id)) continue
+      if (id) seen.add(id)
+      events.push(ev)
+    }
+  }
+  return events
+}
+
 // ESPN detail for our match, oriented to t1/t2 ({ t1Goals, t2Goals, pens, aet }),
-// or null when the day's scoreboard has no matching event. Parsing is in
-// autofill-core (unit-tested); this just fetches the right day and finds it.
+// or null when the scoreboard has no matching event. Parsing is in autofill-core
+// (unit-tested); this fetches the dates around kickoff and finds the event.
 async function espnGoals(m) {
-  const events = await eventsForDate(etDate(m.ko))
+  const events = await espnEventsAround(m.ko)
   for (const ev of events) {
     const detail = parseEspnEventDetail(ev, m)
     if (detail) return detail
@@ -140,7 +159,7 @@ async function main() {
     if (decision.action === 'sync') candidates.push({ m, ft: espn, conf: decision.conf })
   }
 
-  console.log(`\nOpenFootball autofill — ${REPO}/${FILE}`)
+  console.log(`\nOpenFootball autofill — ${REPO} (${DIR})`)
   console.log(`  mode: ${DRY ? 'DRY RUN (no push)' : 'WRITE → master'}`)
   console.log(`  ${candidates.length} confirmed final(s) missing from OpenFootball\n`)
   if (!candidates.length) {
@@ -148,10 +167,24 @@ async function main() {
     return
   }
 
-  const meta = await fetch(`https://api.github.com/repos/${REPO}/contents/${FILE}`, {
-    headers: ghHeaders(readToken),
-  }).then((r) => (r.ok ? r.json() : Promise.reject(new Error(`GET cup.txt -> ${r.status}`))))
-  let text = Buffer.from(meta.content, meta.encoding).toString('utf8')
+  // Load each target file (cup.txt / cup_finals.txt) lazily, once.
+  const files = new Map()
+  async function loadFile(path) {
+    if (files.has(path)) return files.get(path)
+    const r = await fetch(`https://api.github.com/repos/${REPO}/contents/${path}`, {
+      headers: ghHeaders(readToken),
+    })
+    if (!r.ok) throw new Error(`GET ${path} -> ${r.status}`)
+    const meta = await r.json()
+    const entry = {
+      path,
+      sha: meta.sha,
+      text: Buffer.from(meta.content, meta.encoding).toString('utf8'),
+      changed: false,
+    }
+    files.set(path, entry)
+    return entry
+  }
 
   const applied = []
   const manual = [] // confirmed, but not safe to auto-write — surfaced for a human
@@ -179,7 +212,8 @@ async function main() {
       pensNote = sdbP ? ' [pens ✓✓]' : ' [pens ESPN-only]'
     }
 
-    const res = applyEdit(text, {
+    const file = await loadFile(fileFor(m))
+    const res = applyEdit(file.text, {
       t1: m.t1,
       t2: m.t2,
       ft,
@@ -196,8 +230,9 @@ async function main() {
       }
       continue
     }
-    text = res.text
-    applied.push({ ...res, conf })
+    file.text = res.text
+    file.changed = true
+    applied.push({ ...res, conf, path: file.path })
     const srcNote = conf === 'espn-only' ? ' [ESPN only — TheSportsDB still lagging]' : ''
     console.log(`  ✓ ${res.label}${res.withDetail ? ' (+ detail)' : ' (score only)'}${pensNote}${srcNote}`)
   }
@@ -232,35 +267,42 @@ async function main() {
   }
 
   const srcSuffix = (a) => (a.conf === 'espn-only' ? ' (ESPN only — TheSportsDB lagging)' : '')
-  const message =
-    `Auto-fill ${applied.length} result${applied.length === 1 ? '' : 's'} from ESPN/TheSportsDB\n\n` +
-    applied.map((a) => `- ${a.label}${srcSuffix(a)}`).join('\n')
-  const put = await fetch(`https://api.github.com/repos/${REPO}/contents/${FILE}`, {
-    method: 'PUT',
-    headers: { ...ghHeaders(pushToken), 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      message,
-      content: Buffer.from(text, 'utf8').toString('base64'),
-      sha: meta.sha,
-      branch: 'master',
-    }),
-  })
-  if (!put.ok) {
-    console.error(`\n✖ Push failed: ${put.status} ${await put.text()}`)
-    process.exit(1)
+  // One commit per changed file (cup.txt and/or cup_finals.txt).
+  const commits = []
+  for (const f of files.values()) {
+    if (!f.changed) continue
+    const here = applied.filter((a) => a.path === f.path)
+    const message =
+      `Auto-fill ${here.length} result${here.length === 1 ? '' : 's'} from ESPN/TheSportsDB\n\n` +
+      here.map((a) => `- ${a.label}${srcSuffix(a)}`).join('\n')
+    const put = await fetch(`https://api.github.com/repos/${REPO}/contents/${f.path}`, {
+      method: 'PUT',
+      headers: { ...ghHeaders(pushToken), 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        message,
+        content: Buffer.from(f.text, 'utf8').toString('base64'),
+        sha: f.sha,
+        branch: 'master',
+      }),
+    })
+    if (!put.ok) {
+      console.error(`\n✖ Push to ${f.path} failed: ${put.status} ${await put.text()}`)
+      process.exit(1)
+    }
+    const url = (await put.json()).commit?.html_url || ''
+    commits.push({ path: f.path, url })
+    console.log(`\nCommitted ${here.length} result(s) to ${f.path}: ${url}`)
   }
-  const res = await put.json()
-  const url = res.commit?.html_url || res.commit?.sha || ''
-  console.log(`\nCommitted ${applied.length} result(s): ${url}\n`)
+  console.log()
 
   // Notify (only on an actual commit, so DRY runs / no-ops never email).
   const subject =
     `⚽ Synced ${applied.length} result${applied.length === 1 ? '' : 's'} to OpenFootball: ` +
     applied.map((a) => a.label).join('; ')
   const body =
-    `New final score(s) synced to openfootball/worldcup (2026--usa/cup.txt):\n\n` +
+    `New final score(s) synced to openfootball/worldcup:\n\n` +
     applied.map((a) => `- ${a.label}${srcSuffix(a)}`).join('\n') +
-    `\n\nCommit: ${url}\n`
+    `\n\n${commits.map((c) => `${c.path}: ${c.url}`).join('\n')}\n`
   sendEmail(subject, body)
 }
 
