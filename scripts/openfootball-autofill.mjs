@@ -5,16 +5,23 @@
 //
 // For every finished match where BOTH fallbacks (ESPN + TheSportsDB) agree on
 // the final and OpenFootball hasn't recorded it yet, it edits the match line in
-// cup.txt — `Home  FT (HT)  Away` plus a goalscorer block in the file's house
-// style — and commits straight to master. Conservative by design:
-//   • Only acts on ✓✓ matches (both fallbacks agree); ⚠ single-source and
-//     ✗ disagreements are left for a human (`npm run of:edits`).
+// cup.txt — `Home  FT (HT)  Away` (or the a.e.t./penalty form for knockouts)
+// plus a goalscorer block in the file's house style — and commits to master.
+// Conservative by design:
+//   • Only acts on ✓✓ matches (both fallbacks agree on the after-ET score);
+//     ⚠ single-source and ✗ disagreements are left for a human (`of:edits`).
 //   • Idempotent: only touches a line that still reads "Home v Away". A line
 //     already carrying a score (or a knockout line still on placeholder names)
 //     is skipped — so re-running never double-edits.
 //   • Half-time + scorers come from ESPN's goal feed and are only written when
-//     the parsed goals reconcile exactly with the agreed final; otherwise it
-//     falls back to a score-only line (always valid — scorers are optional).
+//     the parsed goals reconcile exactly with the agreed final; for a group
+//     match that doesn't reconcile it falls back to a valid score-only line.
+//   • Knockouts: extra-time / penalties are rendered in full
+//     (`1-1 a.e.t. (1-0, 1-1), 4-2 pen.`, shootout kicks excluded from scorers).
+//     The after-ET score is ✓✓; the penalty tally is from ESPN, cross-checked
+//     against TheSportsDB when it carries one (a disagreement defers to a human).
+//     A knockout whose goals can't be reconciled is never written as a bare
+//     score — it's surfaced for manual review instead.
 //
 // All cup.txt formatting/placement lives in scripts/cuptxt.mjs (unit-tested);
 // this file is just the network glue + the commit. cup.txt is the source;
@@ -30,9 +37,9 @@
 
 import { execSync } from 'node:child_process'
 import { MATCHES } from '../src/data/matches.js'
-import { fetchResults, openFootballFinalScore, normalizeTeam } from '../src/services/results.js'
-import { fetchLive, espnFinalScore, LIVE_SOURCE } from '../src/services/espn.js'
-import { fetchBackup, sdbFinalScore } from '../src/services/thesportsdb.js'
+import { fetchResults, applyResults, openFootballFinalScore, normalizeTeam } from '../src/services/results.js'
+import { fetchLive, applyLive, espnFinalScore, LIVE_SOURCE } from '../src/services/espn.js'
+import { fetchBackup, sdbFinalScore, sdbFinalPens } from '../src/services/thesportsdb.js'
 import { applyEdit, orientFt, normEspn, parseClock } from './cuptxt.mjs'
 
 const REPO = 'openfootball/worldcup'
@@ -56,8 +63,13 @@ async function eventsForDate(yyyymmdd) {
   return evs
 }
 
-// Goals for our match from ESPN's scoreboard, oriented to t1/t2:
-// { t1Goals, t2Goals } each [{ name, minute, extra, pen, og }], or null.
+const toNum = (v) => (v == null || v === '' ? null : Number(v))
+
+// ESPN detail for our match, oriented to t1/t2:
+//   { t1Goals, t2Goals, pens, aet }
+// goals are [{ name, minute, extra, pen, og }] (shootout kicks excluded); pens
+// is [t1Pens, t2Pens] or null; aet is true when the match went to extra time.
+// Null when the event isn't found.
 async function espnGoals(m) {
   const events = await eventsForDate(etDate(m.ko))
   const nt1 = normalizeTeam(m.t1)
@@ -74,7 +86,7 @@ async function espnGoals(m) {
     const home = []
     const away = []
     for (const d of c.details || []) {
-      if (!d.scoringPlay || d.shootout) continue
+      if (!d.scoringPlay || d.shootout) continue // exclude penalty-shootout kicks
       const tid = String(d.team?.id)
       const side = tid === String(hc.team.id) ? home : tid === String(ac.team.id) ? away : null
       if (!side) continue
@@ -91,7 +103,19 @@ async function espnGoals(m) {
     const ord = (g) => (g.minute || 0) * 100 + (g.extra || 0)
     home.sort((a, b) => ord(a) - ord(b))
     away.sort((a, b) => ord(a) - ord(b))
-    return hn === nt1 ? { t1Goals: home, t2Goals: away } : { t1Goals: away, t2Goals: home }
+
+    const ph = toNum(hc.shootoutScore)
+    const pa = toNum(ac.shootoutScore)
+    const pensHA = ph != null && pa != null ? [ph, pa] : null
+    const statusName = c.status?.type?.name || ''
+    const aet =
+      /PEN|AET|_ET\b/.test(statusName) ||
+      Boolean(pensHA) ||
+      home.concat(away).some((g) => g.minute != null && g.minute > 90)
+
+    const orient2 = (pair) => (pair == null ? null : hn === nt1 ? pair : [pair[1], pair[0]])
+    const goals = hn === nt1 ? { t1Goals: home, t2Goals: away } : { t1Goals: away, t2Goals: home }
+    return { ...goals, pens: orient2(pensHA), aet }
   }
   return null
 }
@@ -131,34 +155,23 @@ async function main() {
     return
   }
 
-  // Candidates: OpenFootball blank, both fallbacks present AND agree (✓✓).
-  // Knockout finals can go to extra time / penalties — ESPN's plain score would
-  // drop the "a.e.t."/shootout detail, so the auto-writer is scoped to the group
-  // stage and knockouts are surfaced for manual handling (`npm run of:edits`).
+  // Candidates: OpenFootball blank, both fallbacks present AND agree (✓✓) on the
+  // final (the after-extra-time score for knockouts). Merge first so knockout
+  // matches carry their resolved team names instead of "Winner Group A".
+  const merged = applyLive(applyResults(MATCHES, ofMap), liveMap)
   const candidates = []
-  const knockoutPending = []
-  for (const m of MATCHES) {
+  for (const m of merged) {
     if (openFootballFinalScore(m, ofMap)) continue
     const espn = orientFt(espnFinalScore(m, liveMap), m)
     const sdb = orientFt(sdbFinalScore(m, backupMap), m)
-    if (!(espn && sdb && eqFt(espn, sdb))) continue
-    if (m.stage === 'Group') candidates.push({ m, ft: espn })
-    else knockoutPending.push({ m, ft: espn })
+    if (espn && sdb && eqFt(espn, sdb)) candidates.push({ m, ft: espn })
   }
 
   console.log(`\nOpenFootball autofill — ${REPO}/${FILE}`)
   console.log(`  mode: ${DRY ? 'DRY RUN (no push)' : 'WRITE → master'}`)
-  console.log(`  ${candidates.length} group-stage final(s) to write` +
-    (knockoutPending.length ? ` · ${knockoutPending.length} knockout final(s) need manual review` : ''))
-  if (knockoutPending.length) {
-    console.log('  (knockouts may be a.e.t./penalties — fill by hand via `npm run of:edits`):')
-    for (const { m, ft } of knockoutPending) {
-      console.log(`    ⚠ ${m.t1} ${ft[0]}-${ft[1]} ${m.t2}`)
-    }
-  }
-  console.log()
+  console.log(`  ${candidates.length} confirmed final(s) missing from OpenFootball\n`)
   if (!candidates.length) {
-    console.log('No group-stage finals to contribute. ✓\n')
+    console.log('Nothing to contribute. ✓\n')
     return
   }
 
@@ -168,16 +181,58 @@ async function main() {
   let text = Buffer.from(meta.content, meta.encoding).toString('utf8')
 
   const applied = []
+  const manual = [] // confirmed, but not safe to auto-write — surfaced for a human
   for (const { m, ft } of candidates) {
-    const goals = await espnGoals(m)
-    const res = applyEdit(text, { t1: m.t1, t2: m.t2, ft, t1Goals: goals?.t1Goals, t2Goals: goals?.t2Goals })
+    const knockout = m.stage !== 'Group'
+    const detail = await espnGoals(m)
+
+    // Knockouts need ESPN's goal/extra-time/shootout detail to render correctly;
+    // without it we can't tell a.e.t./penalties from a plain score, so defer.
+    if (knockout && !detail) {
+      manual.push({ m, ft, why: 'no ESPN goal detail (can’t confirm a.e.t./pens)' })
+      continue
+    }
+
+    // Penalty shootout: ESPN is primary; cross-check TheSportsDB when it carries
+    // the tally. A disagreement is too risky to auto-write → defer to a human.
+    let pens = detail?.pens || null
+    let pensNote = ''
+    if (pens) {
+      const sdbP = orientFt(sdbFinalPens(m, backupMap), m)
+      if (sdbP && !eqFt(sdbP, pens)) {
+        manual.push({ m, ft, why: `pens disagree (ESPN ${pens.join('-')} vs TheSportsDB ${sdbP.join('-')})` })
+        continue
+      }
+      pensNote = sdbP ? ' [pens ✓✓]' : ' [pens ESPN-only]'
+    }
+
+    const res = applyEdit(text, {
+      t1: m.t1,
+      t2: m.t2,
+      ft,
+      t1Goals: detail?.t1Goals,
+      t2Goals: detail?.t2Goals,
+      aet: detail?.aet || false,
+      pens,
+    })
     if (!res.applied) {
-      console.log(`  · skip ${m.t1} v ${m.t2} — line not found (already scored or placeholder)`)
+      if (res.reason === 'knockout-unreconciled') {
+        manual.push({ m, ft, why: 'ESPN goals don’t reconcile with the final' })
+      } else {
+        console.log(`  · skip ${m.t1} v ${m.t2} — line not found (already scored or placeholder)`)
+      }
       continue
     }
     text = res.text
     applied.push(res)
-    console.log(`  ✓ ${res.label}${res.withDetail ? ' (+ HT & scorers)' : ' (score only)'}`)
+    console.log(`  ✓ ${res.label}${res.withDetail ? ' (+ detail)' : ' (score only)'}${pensNote}`)
+  }
+
+  if (manual.length) {
+    console.log('\n  Needs manual review (`npm run of:edits`):')
+    for (const { m, ft, why } of manual) {
+      console.log(`    ⚠ ${m.t1} ${ft[0]}-${ft[1]} ${m.t2} — ${why}`)
+    }
   }
 
   if (!applied.length) {
@@ -188,8 +243,8 @@ async function main() {
   if (DRY) {
     console.log('\n— DRY RUN: planned diff —')
     for (const a of applied) {
-      console.log(`\n- ${a.oldLine}`)
-      for (const l of a.newBlock.split('\n')) console.log(`+ ${l}`)
+      console.log(`\n- ${a.oldLine.replace(/\r/g, '')}`)
+      for (const l of a.newBlock.replace(/\r/g, '').split('\n')) console.log(`+ ${l}`)
     }
     const hint = process.env.OF_PUSH_TOKEN
       ? ''

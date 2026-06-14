@@ -3,6 +3,7 @@ import {
   applyEdit,
   fmtSide,
   scorerBlock,
+  buildScore,
   goalToken,
   parseClock,
   orientFt,
@@ -29,6 +30,10 @@ Sat June 13
 ▪ Round of 16
 Sun June 28
   16:00 UTC-4    Winner Group A   v Runner-up Group B   @ Los Angeles (Inglewood)
+
+▪ Final
+Sun July 19
+  15:00 UTC-4    Argentina   v France   @ New York/New Jersey (East Rutherford)
 `
 
 const goal = (name, minute, extra, opts = {}) => ({ name, minute, extra, pen: false, og: false, ...opts })
@@ -211,6 +216,98 @@ describe('applyEdit — format + placement', () => {
     // Everything before Group B is byte-for-byte identical.
     const head = FIXTURE.slice(0, FIXTURE.indexOf('▪ Group B'))
     expect(res.text.startsWith(head)).toBe(true)
+  })
+})
+
+describe('buildScore', () => {
+  it('renders regulation, a.e.t., and a.e.t. + penalties', () => {
+    expect(buildScore([2, 1])).toBe('2-1')
+    expect(buildScore([2, 0], { ht: [1, 0] })).toBe('2-0 (1-0)')
+    expect(buildScore([2, 1], { ht: [1, 0], ft90: [1, 1], aet: true })).toBe('2-1 a.e.t. (1-0, 1-1)')
+    expect(buildScore([3, 3], { ht: [2, 0], ft90: [2, 2], aet: true, pens: [4, 2] })).toBe(
+      '3-3 a.e.t. (2-0, 2-2), 4-2 pen.',
+    )
+  })
+})
+
+describe('applyEdit — knockouts (a.e.t. / penalties)', () => {
+  // The 2022 final, verified against ESPN: Argentina 3-3 a.e.t. (2-0, 2-2),
+  // 4-2 pens. Shootout kicks are excluded from the goals passed in.
+  const argentina = [
+    { name: 'Lionel Messi', minute: 23, pen: true, og: false },
+    { name: 'Ángel Di María', minute: 36, pen: false, og: false },
+    { name: 'Lionel Messi', minute: 108, pen: false, og: false },
+  ]
+  const france = [
+    { name: 'Kylian Mbappé', minute: 80, pen: true, og: false },
+    { name: 'Kylian Mbappé', minute: 81, pen: false, og: false },
+    { name: 'Kylian Mbappé', minute: 118, pen: true, og: false },
+  ]
+
+  it('writes the full a.e.t. + penalty line with extra-time-aware HT/FT90', () => {
+    const res = applyEdit(FIXTURE, {
+      t1: 'Argentina',
+      t2: 'France',
+      ft: [3, 3],
+      t1Goals: argentina,
+      t2Goals: france,
+      aet: true,
+      pens: [4, 2],
+    })
+    expect(res.applied).toBe(true)
+    expect(res.newBlock.split('\n')[0]).toContain(
+      'Argentina   3-3 a.e.t. (2-0, 2-2), 4-2 pen. France',
+    )
+    // Non-consecutive repeat scorer (Messi 23', then Di María, then Messi 108')
+    // lists the name twice; consecutive (Mbappé) comma-merges.
+    expect(res.newBlock).toContain(
+      "(Lionel Messi 23' (pen.) Ángel Di María 36' Lionel Messi 108';",
+    )
+    expect(res.newBlock).toContain("Kylian Mbappé 80' (pen.), 81', 118' (pen.))")
+  })
+
+  it('writes a.e.t. without a pen. suffix when the tie is settled in extra time', () => {
+    const res = applyEdit(FIXTURE, {
+      t1: 'Argentina',
+      t2: 'France',
+      ft: [2, 1],
+      t1Goals: [
+        { name: 'A', minute: 20, pen: false, og: false },
+        { name: 'B', minute: 100, pen: false, og: false },
+      ],
+      t2Goals: [{ name: 'C', minute: 30, pen: false, og: false }],
+      aet: true,
+    })
+    expect(res.newBlock.split('\n')[0]).toContain('Argentina   2-1 a.e.t. (1-1, 1-1) France')
+  })
+
+  it('treats a knockout decided in regulation like any other match', () => {
+    const res = applyEdit(FIXTURE, {
+      t1: 'Argentina',
+      t2: 'France',
+      ft: [2, 0],
+      t1Goals: [
+        { name: 'A', minute: 10, pen: false, og: false },
+        { name: 'B', minute: 70, pen: false, og: false },
+      ],
+      t2Goals: [],
+    })
+    expect(res.newBlock.split('\n')[0]).toContain('Argentina   2-0 (1-0) France')
+    expect(res.newBlock).not.toContain('a.e.t.')
+  })
+
+  it('refuses to write a knockout it cannot reconcile (no bare score)', () => {
+    const res = applyEdit(FIXTURE, {
+      t1: 'Argentina',
+      t2: 'France',
+      ft: [3, 3],
+      t1Goals: argentina, // only 3 here, but missing France goals
+      t2Goals: [{ name: 'Kylian Mbappé', minute: 80, pen: true, og: false }],
+      aet: true,
+      pens: [4, 2],
+    })
+    expect(res.applied).toBe(false)
+    expect(res.reason).toBe('knockout-unreconciled')
   })
 })
 
