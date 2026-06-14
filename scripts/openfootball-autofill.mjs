@@ -37,20 +37,15 @@
 
 import { execSync } from 'node:child_process'
 import { MATCHES } from '../src/data/matches.js'
-import { fetchResults, applyResults, openFootballFinalScore, normalizeTeam } from '../src/services/results.js'
+import { fetchResults, applyResults, openFootballFinalScore } from '../src/services/results.js'
 import { fetchLive, applyLive, espnFinalScore, LIVE_SOURCE } from '../src/services/espn.js'
 import { fetchBackup, sdbFinalScore, sdbFinalPens } from '../src/services/thesportsdb.js'
-import { applyEdit, orientFt, normEspn, parseClock } from './cuptxt.mjs'
+import { applyEdit, orientFt } from './cuptxt.mjs'
+import { classifyMatch, parseEspnEventDetail, eqFt } from './autofill-core.mjs'
 
 const REPO = 'openfootball/worldcup'
 const FILE = '2026--usa/cup.txt'
 
-// Prefer ✓✓ (ESPN + TheSportsDB agree). But TheSportsDB often lags by tens of
-// minutes, so once a match is this far past kickoff (≈ full time + ~30 min) and
-// ESPN has confirmed the final, sync on ESPN alone rather than wait indefinitely.
-const ESPN_ONLY_AFTER_MIN = 150
-
-const eqFt = (a, b) => a && b && a[0] === b[0] && a[1] === b[1]
 const minutesSince = (iso) => (Date.now() - new Date(iso).getTime()) / 60_000
 const etDate = (iso) =>
   new Date(iso).toLocaleDateString('en-CA', { timeZone: 'America/New_York' }).replace(/-/g, '')
@@ -69,59 +64,14 @@ async function eventsForDate(yyyymmdd) {
   return evs
 }
 
-const toNum = (v) => (v == null || v === '' ? null : Number(v))
-
-// ESPN detail for our match, oriented to t1/t2:
-//   { t1Goals, t2Goals, pens, aet }
-// goals are [{ name, minute, extra, pen, og }] (shootout kicks excluded); pens
-// is [t1Pens, t2Pens] or null; aet is true when the match went to extra time.
-// Null when the event isn't found.
+// ESPN detail for our match, oriented to t1/t2 ({ t1Goals, t2Goals, pens, aet }),
+// or null when the day's scoreboard has no matching event. Parsing is in
+// autofill-core (unit-tested); this just fetches the right day and finds it.
 async function espnGoals(m) {
   const events = await eventsForDate(etDate(m.ko))
-  const nt1 = normalizeTeam(m.t1)
-  const nt2 = normalizeTeam(m.t2)
   for (const ev of events) {
-    const c = ev.competitions?.[0]
-    const hc = c?.competitors?.find((x) => x.homeAway === 'home')
-    const ac = c?.competitors?.find((x) => x.homeAway === 'away')
-    if (!hc?.team || !ac?.team) continue
-    const hn = normEspn(hc.team.displayName)
-    const an = normEspn(ac.team.displayName)
-    if (!((hn === nt1 && an === nt2) || (hn === nt2 && an === nt1))) continue
-
-    const home = []
-    const away = []
-    for (const d of c.details || []) {
-      if (!d.scoringPlay || d.shootout) continue // exclude penalty-shootout kicks
-      const tid = String(d.team?.id)
-      const side = tid === String(hc.team.id) ? home : tid === String(ac.team.id) ? away : null
-      if (!side) continue
-      const { minute, extra } = parseClock(d.clock?.displayValue)
-      const a = d.athletesInvolved?.[0] || {}
-      side.push({
-        name: (a.displayName || a.shortName || '').trim(),
-        minute,
-        extra,
-        pen: Boolean(d.penaltyKick),
-        og: Boolean(d.ownGoal),
-      })
-    }
-    const ord = (g) => (g.minute || 0) * 100 + (g.extra || 0)
-    home.sort((a, b) => ord(a) - ord(b))
-    away.sort((a, b) => ord(a) - ord(b))
-
-    const ph = toNum(hc.shootoutScore)
-    const pa = toNum(ac.shootoutScore)
-    const pensHA = ph != null && pa != null ? [ph, pa] : null
-    const statusName = c.status?.type?.name || ''
-    const aet =
-      /PEN|AET|_ET\b/.test(statusName) ||
-      Boolean(pensHA) ||
-      home.concat(away).some((g) => g.minute != null && g.minute > 90)
-
-    const orient2 = (pair) => (pair == null ? null : hn === nt1 ? pair : [pair[1], pair[0]])
-    const goals = hn === nt1 ? { t1Goals: home, t2Goals: away } : { t1Goals: away, t2Goals: home }
-    return { ...goals, pens: orient2(pensHA), aet }
+    const detail = parseEspnEventDetail(ev, m)
+    if (detail) return detail
   }
   return null
 }
@@ -180,16 +130,14 @@ async function main() {
   const merged = applyLive(applyResults(MATCHES, ofMap), liveMap)
   const candidates = []
   for (const m of merged) {
-    if (openFootballFinalScore(m, ofMap)) continue
     const espn = orientFt(espnFinalScore(m, liveMap), m)
-    const sdb = orientFt(sdbFinalScore(m, backupMap), m)
-    if (espn && sdb) {
-      if (eqFt(espn, sdb)) candidates.push({ m, ft: espn, conf: 'both' })
-      // disagreement → never auto-write; leave it for a human
-    } else if (espn && minutesSince(m.ko) >= ESPN_ONLY_AFTER_MIN) {
-      candidates.push({ m, ft: espn, conf: 'espn-only' })
-    }
-    // only TheSportsDB, or ESPN but not yet past the wait window → wait
+    const decision = classifyMatch({
+      ofFt: openFootballFinalScore(m, ofMap),
+      espnFt: espn,
+      sdbFt: orientFt(sdbFinalScore(m, backupMap), m),
+      minutesPastKickoff: minutesSince(m.ko),
+    })
+    if (decision.action === 'sync') candidates.push({ m, ft: espn, conf: decision.conf })
   }
 
   console.log(`\nOpenFootball autofill — ${REPO}/${FILE}`)
