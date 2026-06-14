@@ -5,6 +5,18 @@ calendar day; bullet points capture every change made that day (features, fixes,
 data/source updates, deployment). Newest day on top.
 
 ## 2026-06-14
+- **Autofill now runs only during match-finishing windows (and actually at
+  ~5-min cadence):** GitHub throttles `*/5` cron schedules hard — the workflow was
+  only firing a couple of times an hour. Reworked it into a window-gated
+  self-loop: a coarse `*/15` trigger spins the job up, and it loops every ~5 min
+  *only* while a match is in its finishing window (kickoff +85 to +180 min —
+  late second half through source confirmation, [`scripts/active-window.mjs`](./scripts/active-window.mjs));
+  outside those windows it exits in seconds. Because each window is ~95 min long,
+  a coarse trigger reliably lands inside it, and the concurrency group hands off
+  between jobs with no gap. Dropped `npm ci` (the scripts have no npm deps) so the
+  idle checks are cheap, and moved the sync email in-script (Gmail SMTP via
+  python3) so it fires per loop iteration — also retiring the third-party mail
+  Action. New `windowStatus()` is unit-tested (128 tests total).
 - **Manual-review alerts for knockouts the autofill can't auto-sync:** when a
   knockout is confirmed but can't be written safely (ESPN/TheSportsDB disagree on
   the penalty tally, goals don't reconcile, or ESPN has no goal detail), the

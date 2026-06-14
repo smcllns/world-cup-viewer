@@ -36,7 +36,6 @@
 //       DRY_RUN=1 node scripts/openfootball-autofill.mjs  (preview only)
 
 import { execSync } from 'node:child_process'
-import { appendFileSync } from 'node:fs'
 import { MATCHES } from '../src/data/matches.js'
 import { fetchResults, applyResults, openFootballFinalScore, normalizeTeam } from '../src/services/results.js'
 import { fetchLive, applyLive, espnFinalScore, LIVE_SOURCE } from '../src/services/espn.js'
@@ -130,6 +129,17 @@ function ghHeaders(token) {
 }
 
 async function main() {
+  // Test path (workflow_dispatch test_email=true): just prove the mail secrets work.
+  if (process.env.TEST_EMAIL === '1') {
+    sendEmail(
+      '✅ Test — World Cup autofill email is working',
+      'This is a test from the OpenFootball autofill workflow. If you got this, the ' +
+        'mail secrets are configured and you’ll be emailed each time a new final score ' +
+        'is synced to openfootball/worldcup.',
+    )
+    return
+  }
+
   const pushToken = process.env.OF_PUSH_TOKEN || ''
   let readToken = pushToken || process.env.GITHUB_TOKEN || ''
   if (!readToken) {
@@ -279,20 +289,53 @@ async function main() {
   const url = res.commit?.html_url || res.commit?.sha || ''
   console.log(`\nCommitted ${applied.length} result(s): ${url}\n`)
 
-  // Emit step outputs (only on an actual commit) so the workflow can email a
-  // notification for the newly-synced finals. No commit → no outputs → no email.
-  setOutput('count', String(applied.length))
-  setOutput('summary', applied.map((a) => a.label).join('; '))
-  setOutput('details', applied.map((a) => `- ${a.label}`).join('\n'))
-  setOutput('commit_url', url)
+  // Notify (only on an actual commit, so DRY runs / no-ops never email).
+  const subject =
+    `⚽ Synced ${applied.length} result${applied.length === 1 ? '' : 's'} to OpenFootball: ` +
+    applied.map((a) => a.label).join('; ')
+  const body =
+    `New final score(s) synced to openfootball/worldcup (2026--usa/cup.txt):\n\n` +
+    applied.map((a) => `- ${a.label}`).join('\n') +
+    `\n\nCommit: ${url}\n`
+  sendEmail(subject, body)
 }
 
-// Append a (possibly multi-line) GitHub Actions step output. No-op locally.
-function setOutput(name, value) {
-  const file = process.env.GITHUB_OUTPUT
-  if (!file) return
-  const delim = `__EOF_${name}__`
-  appendFileSync(file, `${name}<<${delim}\n${value}\n${delim}\n`)
+// Send a notification via Gmail SMTP using Python's smtplib (preinstalled on the
+// runner — avoids adding an npm/Action dependency, and works inside the loop).
+// No-op without mail secrets; best-effort, never throws.
+function sendEmail(subject, body) {
+  const user = process.env.MAIL_USERNAME
+  const pass = process.env.MAIL_PASSWORD
+  if (!user || !pass) {
+    console.log('  (no mail secrets — skipping email)')
+    return
+  }
+  const py = `import smtplib, os, ssl
+from email.message import EmailMessage
+m = EmailMessage()
+m['From'] = os.environ['SMTP_FROM']; m['To'] = os.environ['SMTP_TO']
+m['Subject'] = os.environ['SMTP_SUBJECT']; m.set_content(os.environ['SMTP_BODY'])
+with smtplib.SMTP_SSL('smtp.gmail.com', 465, context=ssl.create_default_context()) as s:
+    s.login(os.environ['SMTP_USER'], os.environ['SMTP_PASS'])
+    s.send_message(m)
+`
+  try {
+    execSync('python3 -', {
+      input: py,
+      env: {
+        ...process.env,
+        SMTP_FROM: `World Cup Autofill <${user}>`,
+        SMTP_TO: process.env.MAIL_TO || 'chester.ismay@gmail.com',
+        SMTP_SUBJECT: subject,
+        SMTP_BODY: body,
+        SMTP_USER: user,
+        SMTP_PASS: pass,
+      },
+    })
+    console.log(`  ✉ emailed ${process.env.MAIL_TO || 'chester.ismay@gmail.com'}`)
+  } catch (err) {
+    console.log(`  ✖ email failed: ${(err.stderr || err.message || '').toString().trim()}`)
+  }
 }
 
 // Open a GitHub issue in OUR repo for each match the autofill couldn't safely
