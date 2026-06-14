@@ -35,6 +35,19 @@ data/source updates, deployment). Newest day on top.
   time-based "Live" with no score or clock. `fetchLive` now queries the dates
   around now (yesterday/today/tomorrow, UTC) and merges them, so live games show
   their score and clock again. (Caught live on Australia 1–0 Türkiye, 43'.)
+- **Self-perpetuating autofill loop + a big test pass (PR):** GitHub's scheduler
+  fires too sparsely (~once/2h) to rely on, so a loop run now **re-dispatches the
+  next one** while another match window is within ~5.5h — coverage during a match
+  day no longer depends on the scheduler (the `*/15` cron is just a backstop to
+  restart the chain after overnight rests). Loop runs share one concurrency group
+  so the chain never doubles up; quick manual runs get their own. Extracted the
+  autofill's risky decision/parsing logic into `scripts/autofill-core.mjs`
+  (`classifyMatch`, `parseEspnEventDetail`) and added tests: ESPN-only fallback /
+  disagreement / ✓✓ branches, ESPN event → goals/penalties/extra-time parsing
+  (incl. a 2022-final-shaped shootout fixture), more `windowStatus` edges, and a
+  guard that the scripts pull in **zero npm packages** (the workflow runs without
+  `npm ci`). 147 tests total. Design + optional external-pinger notes in
+  [`docs/autofill-scheduling.md`](./docs/autofill-scheduling.md).
 - **Resilient scheduling (sleep-until-window) + manual babysit:** GitHub fires
   scheduled workflows only sporadically (observed ~once every 2h), which could
   miss a match's ~95-min sync window entirely. Reworked the loop to SLEEP until

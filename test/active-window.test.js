@@ -36,4 +36,18 @@ describe('windowStatus', () => {
     expect(res.state).toBe('IDLE')
     expect(res.seconds).toBe((30 + WINDOW_START_MIN) * 60)
   })
+
+  it('is IDLE -1 with no matches at all', () => {
+    expect(windowStatus([], at(0))).toEqual({ state: 'IDLE', seconds: -1 })
+  })
+
+  it('treats the exact window end as no-longer-active (half-open interval)', () => {
+    // At exactly +END, this match is done and there is nothing after it.
+    expect(windowStatus(matches, at(WINDOW_END_MIN))).toEqual({ state: 'IDLE', seconds: -1 })
+  })
+
+  it('ignores far-future matches when an earlier window is already active', () => {
+    const two = [{ ko: '2026-06-20T18:00:00Z' }, { ko: '2026-06-21T18:00:00Z' }]
+    expect(windowStatus(two, at(120))).toEqual({ state: 'ACTIVE', seconds: (WINDOW_END_MIN - 120) * 60 })
+  })
 })

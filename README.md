@@ -126,11 +126,14 @@ cadence, but **only while matches are finishing** — a coarse `*/15` trigger sp
 the job up and it self-loops every ~5 min while "now" is inside a match's
 finishing window (late second half through post-match confirmation, see
 [`scripts/active-window.mjs`](./scripts/active-window.mjs)); outside those windows
-it checks and exits in seconds. (This sidesteps GitHub's heavy throttling of
-frequent `*/5` schedules, since the long windows reliably catch a coarser
-trigger.) The scripts use only Node built-ins + repo source — no `npm ci`. It
-needs an `OF_PUSH_TOKEN` secret (push to `openfootball/worldcup`); without it — or
-with `DRY_RUN=1` — it previews the edits and pushes nothing.
+it checks and exits in seconds. Because GitHub's scheduler is unreliable
+(it can go ~2h between firings), a loop run also **re-dispatches the next one**
+while another window is near, so coverage during a match day is self-sustaining
+and doesn't depend on the cron (which is just a backstop); see
+[`docs/autofill-scheduling.md`](./docs/autofill-scheduling.md). The scripts use
+only Node built-ins + repo source — no `npm ci`. It needs an `OF_PUSH_TOKEN`
+secret (push to `openfootball/worldcup`); without it — or with `DRY_RUN=1` — it
+previews the edits and pushes nothing.
 
 When the workflow actually commits a new final upstream it emails a notification
 (match, commit link, run link). That step uses Gmail SMTP and is gated on a real

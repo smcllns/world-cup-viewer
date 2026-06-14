@@ -42,8 +42,15 @@ permissions:
   contents: read
   issues: write # open a manual-review issue when a knockout can't be auto-synced
 
+# Long "loop" runs (the schedule and the babysit chain) share ONE group so only
+# one polls at a time and the re-dispatch chain never doubles up. Quick manual
+# runs (test email / one-off sync) get a unique group so they never wait behind a
+# multi-hour loop.
 concurrency:
-  group: openfootball-autofill-${{ github.event_name }}
+  group: >-
+    ${{ (github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.babysit))
+        && 'openfootball-autofill-loop'
+        || format('openfootball-autofill-once-{0}', github.run_id) }}
   cancel-in-progress: false
 
 jobs:
@@ -104,3 +111,23 @@ jobs:
               break
             fi
           done
+
+      # Self-perpetuating chain: GitHub's scheduler is too sparse to rely on (it
+      # fires ~once every 2h), so a loop run re-dispatches the next one itself as
+      # long as another window is within reach — making coverage independent of the
+      # scheduler during a match day. It rests during long overnight gaps; the */15
+      # schedule is the backstop that restarts the chain before the next day's games.
+      - name: Keep coverage continuous (re-dispatch if another window is near)
+        if: ${{ github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.babysit) }}
+        env:
+          GH_TOKEN: ${{ secrets.OF_PUSH_TOKEN }}
+        run: |
+          set -- $(node scripts/active-window.mjs)
+          STATE=${1:-}; SECS=${2:-}
+          if [ "$STATE" = "ACTIVE" ] || { [ "$STATE" = "IDLE" ] && [ -n "$SECS" ] && [ "$SECS" -ge 0 ] && [ "$SECS" -le 19800 ]; }; then
+            echo "Another window within ~5.5h — re-dispatching the loop to continue coverage."
+            gh workflow run "OpenFootball autofill" -f babysit=true \
+              || echo "Re-dispatch failed; the schedule backstop will recover."
+          else
+            echo "No window within ~5.5h — resting; the schedule restarts the loop before the next match day."
+          fi
