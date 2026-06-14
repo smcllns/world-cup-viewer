@@ -234,6 +234,10 @@ async function main() {
     for (const { m, ft, why } of manual) {
       console.log(`    ⚠ ${m.t1} ${ft[0]}-${ft[1]} ${m.t2} — ${why}`)
     }
+    // Open a (deduplicated) GitHub issue per match so it surfaces once and
+    // notifies — a deferred knockout stays a candidate every run, so a plain
+    // email would repeat endlessly; an issue is opened once and tracked.
+    if (!DRY) await flagManual(manual)
   }
 
   if (!applied.length) {
@@ -289,6 +293,42 @@ function setOutput(name, value) {
   if (!file) return
   const delim = `__EOF_${name}__`
   appendFileSync(file, `${name}<<${delim}\n${value}\n${delim}\n`)
+}
+
+// Open a GitHub issue in OUR repo for each match the autofill couldn't safely
+// write, deduplicated by title so it's raised once (not every run). Uses
+// GITHUB_TOKEN (issues:write on this repo) — best-effort, never throws.
+async function flagManual(manual) {
+  const repo = process.env.GITHUB_REPOSITORY
+  const token = process.env.GITHUB_TOKEN
+  if (!repo || !token) return
+  const owner = repo.split('/')[0]
+  for (const { m, ft, why } of manual) {
+    const title = `Manual review: ${m.t1} vs ${m.t2}`
+    try {
+      const q = encodeURIComponent(`repo:${repo} is:issue is:open in:title "${title}"`)
+      const found = await fetch(`https://api.github.com/search/issues?q=${q}`, {
+        headers: ghHeaders(token),
+      }).then((r) => (r.ok ? r.json() : { items: [] }))
+      if ((found.items || []).some((i) => i.title === title)) {
+        console.log(`  (issue already open) ${title}`)
+        continue
+      }
+      const body =
+        `@${owner} — the autofill couldn't safely sync this knockout result, so it needs a hand.\n\n` +
+        `- **${m.t1} ${ft[0]}-${ft[1]} ${m.t2}** (after-extra-time score, ✓✓ confirmed)\n` +
+        `- Reason: ${why}\n\n` +
+        `Fill it in at \`2026--usa/cup.txt\` (run \`npm run of:edits\` for the exact line). Close this once done.`
+      const res = await fetch(`https://api.github.com/repos/${repo}/issues`, {
+        method: 'POST',
+        headers: { ...ghHeaders(token), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title, body, assignees: [owner] }),
+      })
+      console.log(res.ok ? `  ⚠ opened issue: ${title}` : `  ✖ issue create failed (${res.status})`)
+    } catch (err) {
+      console.log(`  ✖ issue create error: ${err.message}`)
+    }
+  }
 }
 
 main()

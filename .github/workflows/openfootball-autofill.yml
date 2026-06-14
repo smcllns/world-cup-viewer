@@ -31,6 +31,10 @@ on:
         type: boolean
         default: false
 
+permissions:
+  contents: read
+  issues: write # open a manual-review issue when a knockout can't be auto-synced
+
 jobs:
   autofill:
     name: Fill confirmed finals upstream
@@ -46,7 +50,7 @@ jobs:
       # test_email=true.
       - name: Send test email
         if: inputs.test_email && env.MAIL_PASSWORD != ''
-        uses: dawidd6/action-send-mail@v3
+        uses: dawidd6/action-send-mail@v17
         env:
           MAIL_PASSWORD: ${{ secrets.MAIL_PASSWORD }}
         with:
@@ -74,6 +78,7 @@ jobs:
         run: node scripts/openfootball-autofill.mjs
         env:
           OF_PUSH_TOKEN: ${{ secrets.OF_PUSH_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # opens manual-review issues in THIS repo
           DRY_RUN: ${{ inputs.dry_run && '1' || '' }}
 
       # Email chester.ismay@gmail.com only when a NEW final was actually committed
@@ -82,7 +87,7 @@ jobs:
       # they're absent the step is skipped, so the sync still runs without email.
       - name: Email on new sync
         if: steps.autofill.outputs.count && steps.autofill.outputs.count != '0' && env.MAIL_PASSWORD != ''
-        uses: dawidd6/action-send-mail@v3
+        uses: dawidd6/action-send-mail@v17
         env:
           MAIL_PASSWORD: ${{ secrets.MAIL_PASSWORD }}
         with:

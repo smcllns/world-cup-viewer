@@ -130,6 +130,8 @@ push, so it only fires on an actual sync; it needs `MAIL_USERNAME` (a Gmail
 address) and `MAIL_PASSWORD` (a [Gmail App Password](https://myaccount.google.com/apppasswords))
 as repo secrets, and is skipped if they're absent.
 
+If a **knockout** result can't be auto-synced safely (e.g. ESPN and TheSportsDB disagree on the penalty tally, or the goals don't reconcile), the workflow instead opens a deduplicated GitHub issue assigned to the maintainer — raised once, not every run — so it can be filled in by hand.
+
 See [`NEWS.md`](./NEWS.md) for the changelog.
 
 ## Credits

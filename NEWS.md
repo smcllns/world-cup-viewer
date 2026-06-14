@@ -5,6 +5,13 @@ calendar day; bullet points capture every change made that day (features, fixes,
 data/source updates, deployment). Newest day on top.
 
 ## 2026-06-14
+- **Manual-review alerts for knockouts the autofill can't auto-sync:** when a
+  knockout is confirmed but can't be written safely (ESPN/TheSportsDB disagree on
+  the penalty tally, goals don't reconcile, or ESPN has no goal detail), the
+  workflow opens a **deduplicated GitHub issue** assigned to the maintainer —
+  raised once (not every 5-minute run), so it's a trackable to-do rather than
+  email spam. Bumped `action-send-mail` to v17 (Node 24; clears the deprecation
+  warning).
 - **Email notification on every upstream sync:** when the autofill workflow
   actually commits a new final to `openfootball/worldcup`, it now emails
   chester.ismay@gmail.com with the match(es), commit link, and run link. The
