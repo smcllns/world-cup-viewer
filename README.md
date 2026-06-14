@@ -117,12 +117,16 @@ one (a disagreement, or a knockout whose goals can't be reconciled, is left for
 manual review rather than written as a bare score). All of that formatting/placement logic lives in
 [`scripts/cuptxt.mjs`](./scripts/cuptxt.mjs) and is unit-tested
 ([`test/cuptxt.test.js`](./test/cuptxt.test.js)). The
-[workflow](./.github/workflows/openfootball-autofill.yml) runs it every 5 minutes
-during the tournament (GitHub's minimum cron granularity — scheduled runs are
-best-effort, so figure "within ~5–15 min of a finish"); it needs an
-`OF_PUSH_TOKEN` secret (a fine-grained PAT with Contents: write on
-`openfootball/worldcup`). Without that secret — or with `DRY_RUN=1` — it previews
-the edits and pushes nothing.
+[workflow](./.github/workflows/openfootball-autofill.yml) runs it at ~5-minute
+cadence, but **only while matches are finishing** — a coarse `*/15` trigger spins
+the job up and it self-loops every ~5 min while "now" is inside a match's
+finishing window (late second half through post-match confirmation, see
+[`scripts/active-window.mjs`](./scripts/active-window.mjs)); outside those windows
+it checks and exits in seconds. (This sidesteps GitHub's heavy throttling of
+frequent `*/5` schedules, since the long windows reliably catch a coarser
+trigger.) The scripts use only Node built-ins + repo source — no `npm ci`. It
+needs an `OF_PUSH_TOKEN` secret (push to `openfootball/worldcup`); without it — or
+with `DRY_RUN=1` — it previews the edits and pushes nothing.
 
 When the workflow actually commits a new final upstream it emails a notification
 (match, commit link, run link). That step uses Gmail SMTP and is gated on a real

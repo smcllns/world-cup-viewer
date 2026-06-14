@@ -1,25 +1,28 @@
 name: OpenFootball autofill
 
-# Contributes confirmed group-stage final scores back to the upstream source
-# (openfootball/worldcup, 2026--usa/cup.txt). Runs every 5 minutes during the
-# tournament so a freshly-finished match is filled in within minutes, not up to
-# an hour; for every finished match where ESPN and TheSportsDB agree on the final
-# and OpenFootball hasn't recorded it yet, it edits the cup.txt match line (score
-# + half-time + scorers) and commits to master. Idempotent and conservative — the
-# job no-ops cheaply when nothing is pending. See scripts/openfootball-autofill.mjs.
+# Syncs confirmed final scores to openfootball/worldcup (2026--usa/cup.txt) — but
+# only while matches are finishing, not around the clock. A scheduled run loops
+# every ~5 minutes ONLY when "now" is inside a match's finishing window (late
+# second half through post-match source confirmation, see scripts/active-window.mjs);
+# outside those windows it checks and exits in seconds.
 #
-# NOTE: 5 minutes is the minimum cron granularity GitHub allows, and scheduled
-# runs are best-effort — under platform load they can be delayed several minutes
-# or skipped, so treat the cadence as "within ~5-15 min of a finish".
+# Why this shape: GitHub throttles frequent (*/5) cron schedules heavily, so a
+# fixed 5-min schedule is unreliable. Instead a coarser */15 trigger spins the job
+# up, and because each match window is ~95 min long, at least one trigger reliably
+# lands inside it even when GitHub drops some; the job then self-loops at 5-min
+# cadence through the window. The concurrency group serializes scheduled runs, so
+# when one job hits its ~55-min budget a queued one takes over with no gap.
 #
-# Requires the OF_PUSH_TOKEN secret: a fine-grained PAT with Contents: write on
-# openfootball/worldcup. Without it the job runs as a harmless dry run (reports
-# what it WOULD write, pushes nothing), so it's safe to enable before the secret
-# exists. Manually runnable from the Actions tab.
+# The scripts use only Node built-ins + repo source (no npm packages), so there's
+# no `npm ci` — keeping the frequent idle checks cheap. Email is sent in-script
+# (Gmail SMTP via python3) so it fires per-iteration inside the loop.
+#
+# Secrets: OF_PUSH_TOKEN (push to openfootball/worldcup) — without it, dry-run.
+# MAIL_USERNAME + MAIL_PASSWORD (Gmail App Password) for notifications — optional.
 
 on:
   schedule:
-    - cron: '*/5 * * * *' # every 5 minutes (GitHub's minimum cron granularity)
+    - cron: '*/15 * * * *' # coarse; the in-job window gate decides when to actually loop
   workflow_dispatch:
     inputs:
       dry_run:
@@ -27,7 +30,7 @@ on:
         type: boolean
         default: false
       test_email:
-        description: 'Send a test notification email and skip the sync'
+        description: 'Send a test notification email and exit'
         type: boolean
         default: false
 
@@ -35,74 +38,55 @@ permissions:
   contents: read
   issues: write # open a manual-review issue when a knockout can't be auto-synced
 
+concurrency:
+  group: openfootball-autofill-${{ github.event_name }}
+  cancel-in-progress: false
+
 jobs:
   autofill:
-    name: Fill confirmed finals upstream
+    name: Sync confirmed finals upstream
     runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      OF_PUSH_TOKEN: ${{ secrets.OF_PUSH_TOKEN }}
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # opens manual-review issues in THIS repo
+      MAIL_USERNAME: ${{ secrets.MAIL_USERNAME }}
+      MAIL_PASSWORD: ${{ secrets.MAIL_PASSWORD }}
+      MAIL_TO: chester.ismay@gmail.com
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
         with:
           node-version: 22
-          cache: npm
-      # Test path: send one notification email and stop (verifies the mail
-      # secrets without waiting for a real sync). `workflow_dispatch` with
-      # test_email=true.
-      - name: Send test email
-        if: inputs.test_email && env.MAIL_PASSWORD != ''
-        uses: dawidd6/action-send-mail@v17
-        env:
-          MAIL_PASSWORD: ${{ secrets.MAIL_PASSWORD }}
-        with:
-          server_address: smtp.gmail.com
-          server_port: 465
-          secure: true
-          username: ${{ secrets.MAIL_USERNAME }}
-          password: ${{ secrets.MAIL_PASSWORD }}
-          from: World Cup Autofill <${{ secrets.MAIL_USERNAME }}>
-          to: chester.ismay@gmail.com
-          subject: "✅ Test — World Cup autofill email notifications are working"
-          body: |
-            This is a test from the OpenFootball autofill workflow.
 
-            If you're reading this, MAIL_USERNAME / MAIL_PASSWORD are set correctly
-            and you'll get an email each time a new final score is synced to
-            openfootball/worldcup.
+      # Manual: send a test email and stop.
+      - name: Test email
+        if: ${{ inputs.test_email }}
+        run: TEST_EMAIL=1 node scripts/openfootball-autofill.mjs
 
-            Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-
-      - run: npm ci
-        if: ${{ !inputs.test_email }}
-      - id: autofill
-        if: ${{ !inputs.test_email }}
+      # Manual: run the sync once now, ignoring the match-time window.
+      - name: Sync once (manual)
+        if: ${{ github.event_name == 'workflow_dispatch' && !inputs.test_email }}
         run: node scripts/openfootball-autofill.mjs
         env:
-          OF_PUSH_TOKEN: ${{ secrets.OF_PUSH_TOKEN }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # opens manual-review issues in THIS repo
           DRY_RUN: ${{ inputs.dry_run && '1' || '' }}
 
-      # Email chester.ismay@gmail.com only when a NEW final was actually committed
-      # upstream (the script sets `count` only on a real push). Needs MAIL_USERNAME
-      # (the Gmail address) and MAIL_PASSWORD (a Gmail App Password) secrets; if
-      # they're absent the step is skipped, so the sync still runs without email.
-      - name: Email on new sync
-        if: steps.autofill.outputs.count && steps.autofill.outputs.count != '0' && env.MAIL_PASSWORD != ''
-        uses: dawidd6/action-send-mail@v17
-        env:
-          MAIL_PASSWORD: ${{ secrets.MAIL_PASSWORD }}
-        with:
-          server_address: smtp.gmail.com
-          server_port: 465
-          secure: true
-          username: ${{ secrets.MAIL_USERNAME }}
-          password: ${{ secrets.MAIL_PASSWORD }}
-          from: World Cup Autofill <${{ secrets.MAIL_USERNAME }}>
-          to: chester.ismay@gmail.com
-          subject: "⚽ Synced ${{ steps.autofill.outputs.count }} result(s) to OpenFootball: ${{ steps.autofill.outputs.summary }}"
-          body: |
-            New final score(s) synced to openfootball/worldcup (2026--usa/cup.txt):
-
-            ${{ steps.autofill.outputs.details }}
-
-            Commit: ${{ steps.autofill.outputs.commit_url }}
-            Workflow run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+      # Scheduled: loop at ~5-min cadence, but only inside a match window.
+      - name: Sync loop (match windows only)
+        if: ${{ github.event_name == 'schedule' }}
+        run: |
+          DEADLINE=$((SECONDS + 3300)) # ~55 min, then a fresh trigger takes over
+          while [ $SECONDS -lt $DEADLINE ]; do
+            set -- $(node scripts/active-window.mjs)
+            STATE=$1; SECS=$2
+            if [ "$STATE" = "ACTIVE" ]; then
+              node scripts/openfootball-autofill.mjs || true
+              sleep 270
+            elif [ "$STATE" = "IDLE" ] && [ "${SECS:-0}" -ge 0 ] && [ "${SECS:-0}" -le 600 ]; then
+              echo "Match window starts in ${SECS}s — waiting."
+              sleep $((SECS + 5))
+            else
+              echo "No active or imminent match window (next in ${SECS:-?}s). Exiting."
+              break
+            fi
+          done
