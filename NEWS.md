@@ -4,6 +4,21 @@ A dated changelog for the World Cup 2026 Schedule Viewer. Each heading is a
 calendar day; bullet points capture every change made that day (features, fixes,
 data/source updates, deployment). Newest day on top.
 
+## 2026-06-14
+- **Autofill now handles knockout a.e.t./penalties** (was group-stage only): the
+  OpenFootball autofill writer renders knockout results in cup.txt's full house
+  style — `1-1 a.e.t. (1-0, 1-1), 4-2 pen.` — with extra-time-aware half-time and
+  FT-at-90 scores and shootout kicks excluded from the goalscorer block. The
+  after-extra-time score is still ✓✓ (ESPN + TheSportsDB); the penalty tally is
+  ESPN-primary, cross-checked against TheSportsDB when it carries one (a
+  disagreement, or a knockout whose goals can't be reconciled, is surfaced for
+  manual review rather than written as a bare score). Matches are merged first so
+  knockout lines pick up resolved team names instead of "Winner Group A". New
+  `buildScore()` + a.e.t./penalty tests in `cuptxt.mjs` anchored on the verified
+  2022 final (Argentina 3–3 a.e.t. (2–0, 2–2), 4–2 pen.). First live autofill
+  commit: Brazil 1–1 Morocco
+  ([commit](https://github.com/openfootball/worldcup/commit/dc6d4da963150ef6e41de2ac82afd692291705a2)).
+
 ## 2026-06-13
 - **`npm run of:autofill` + hourly workflow — automatically give confirmed
   finals back to OpenFootball:** the write-capable counterpart to `of:edits`.

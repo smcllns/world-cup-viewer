@@ -69,11 +69,16 @@ export async function fetchBackup(signal) {
     const h = toNum(ev.intHomeScore)
     const a = toNum(ev.intAwayScore)
     const final = FINISHED.has(ev.strStatus) && h != null && a != null
+    // Penalty-shootout tally, if TheSportsDB carries it (field availability is
+    // inconsistent on the free tier) — used only to cross-check ESPN's shootout.
+    const ph = toNum(ev.intHomeScorePenalties)
+    const pa = toNum(ev.intAwayScorePenalties)
     const rec = {
       home,
       away,
       final,
       score: h != null && a != null ? [h, a] : null,
+      pens: ph != null && pa != null ? [ph, pa] : null,
       instant: instantOf(ev),
     }
     map.set(pairKey(home, away), rec)
@@ -86,11 +91,25 @@ export async function fetchBackup(signal) {
 // reconciler can compare it against the other sources. Returns null unless this
 // source reports the match as finished. Mirrors the getters in results.js / espn.js.
 export function sdbFinalScore(match, backupMap) {
-  if (!backupMap) return null
-  const rec =
-    isRealTeam(match.t1) && isRealTeam(match.t2)
-      ? backupMap.get(pairKey(normalizeTeam(match.t1), normalizeTeam(match.t2)))
-      : backupMap.get('inst:' + new Date(match.ko).getTime())
+  const rec = sdbRecordFor(match, backupMap)
   if (!rec || !rec.final || !rec.score) return null
   return { home: rec.home, away: rec.away, ft: rec.score }
+}
+
+function sdbRecordFor(match, backupMap) {
+  if (!backupMap) return null
+  return (
+    (isRealTeam(match.t1) && isRealTeam(match.t2)
+      ? backupMap.get(pairKey(normalizeTeam(match.t1), normalizeTeam(match.t2)))
+      : backupMap.get('inst:' + new Date(match.ko).getTime())) || null
+  )
+}
+
+// Penalty-shootout tally as a report (ft = [homePens, awayPens]) so it orients
+// the same way as the score getters. Null unless TheSportsDB carries it — the
+// autofill uses it to cross-check ESPN's shootout, falling back to ESPN alone.
+export function sdbFinalPens(match, backupMap) {
+  const rec = sdbRecordFor(match, backupMap)
+  if (!rec || !rec.final || !rec.pens) return null
+  return { home: rec.home, away: rec.away, ft: rec.pens }
 }

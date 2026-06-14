@@ -79,17 +79,38 @@ export function scorerBlock(homeGoals, awayGoals, eol = '\n') {
   return null
 }
 
-// Half-time count for one team from its goals (goals in the first 45').
+// Half-time = goals in the first 45'; regulation = goals through 90' (90+x
+// stoppage is regulation; extra-time goals carry minutes > 90, e.g. 105', 120').
 const firstHalf = (g) => g.minute != null && g.minute <= 45
+const regulation = (g) => g.minute != null && g.minute <= 90
 const validGoals = (goals, n) => goals.length === n && goals.every((g) => g.name && g.minute != null)
+
+// Render the score segment that replaces " v " on a match line, oriented to the
+// home (first-listed) team. opts:
+//   null / undefined                 -> "2-1"                       (score only)
+//   { ht }                           -> "2-1 (1-0)"                 (regulation)
+//   { ht, ft90, aet:true }           -> "2-1 a.e.t. (1-0, 1-1)"     (extra time)
+//   { ht, ft90, aet:true, pens }     -> "1-1 a.e.t. (1-0, 1-1), 4-2 pen."
+// All of ht/ft90/pens are [home, away] pairs already oriented to the home team.
+export function buildScore([h, a], opts = null) {
+  if (!opts) return `${h}-${a}`
+  if (opts.aet) {
+    let s = `${h}-${a} a.e.t. (${opts.ht[0]}-${opts.ht[1]}, ${opts.ft90[0]}-${opts.ft90[1]})`
+    if (opts.pens) s += `, ${opts.pens[0]}-${opts.pens[1]} pen.`
+    return s
+  }
+  return `${h}-${a} (${opts.ht[0]}-${opts.ht[1]})`
+}
 
 // Regex for an UNSCORED match line "  <time> UTC<off>   Home  v Away   @ Venue".
 // Captures: 1=prefix(time) 2=home 3=gap 4=gap 5=away 6=" @ venue…". The tail is
 // [^\r\n]* (not .*$) so it stops cleanly at the line end on CRLF files without
 // swallowing the carriage return — letting the writer keep endings consistent.
 export function lineRegex(home, away) {
+  // Whitespace classes are [ \t] (not \s) so the match can't reach across line
+  // boundaries and accidentally swallow a preceding blank line into the prefix.
   return new RegExp(
-    `^(\\s*\\d{1,2}:\\d{2}\\s+UTC\\S+\\s+)(${esc(home)})(\\s+)v(\\s+)(${esc(away)})(\\s+@[^\\r\\n]*)`,
+    `^([ \\t]*\\d{1,2}:\\d{2}[ \\t]+UTC\\S+[ \\t]+)(${esc(home)})([ \\t]+)v([ \\t]+)(${esc(away)})([ \\t]+@[^\\r\\n]*)`,
     'm',
   )
 }
@@ -102,8 +123,9 @@ export function lineRegex(home, away) {
 // untouched. Half-time + scorers are only written when the goals reconcile with
 // the final; otherwise a valid score-only line is written.
 export function applyEdit(text, spec) {
-  const { t1, t2, ft, t1Goals = null, t2Goals = null } = spec
+  const { t1, t2, ft, t1Goals = null, t2Goals = null, aet = false, pens = null } = spec
   const eol = text.includes('\r\n') ? '\r\n' : '\n'
+  const knockout = Boolean(aet || pens)
 
   let hit = null
   let homeIsT1 = true
@@ -121,17 +143,29 @@ export function applyEdit(text, spec) {
   if (!hit) return { applied: false, reason: 'line-not-found' }
 
   const ftLine = homeIsT1 ? ft : [ft[1], ft[0]]
-  let scoreSeg = `${ftLine[0]}-${ftLine[1]}`
-  let block = null
+  const haveGoals =
+    t1Goals && t2Goals && validGoals(t1Goals, ft[0]) && validGoals(t2Goals, ft[1])
 
-  if (t1Goals && t2Goals && validGoals(t1Goals, ft[0]) && validGoals(t2Goals, ft[1])) {
-    const htT1 = t1Goals.filter(firstHalf).length
-    const htT2 = t2Goals.filter(firstHalf).length
-    const htLine = homeIsT1 ? [htT1, htT2] : [htT2, htT1]
-    scoreSeg = `${ftLine[0]}-${ftLine[1]} (${htLine[0]}-${htLine[1]})`
+  let scoreSeg
+  let block = null
+  if (haveGoals) {
     const homeGoals = homeIsT1 ? t1Goals : t2Goals
     const awayGoals = homeIsT1 ? t2Goals : t1Goals
+    const ht = [homeGoals.filter(firstHalf).length, awayGoals.filter(firstHalf).length]
+    if (knockout) {
+      const ft90 = [homeGoals.filter(regulation).length, awayGoals.filter(regulation).length]
+      const pensLine = pens ? (homeIsT1 ? pens : [pens[1], pens[0]]) : null
+      scoreSeg = buildScore(ftLine, { ht, ft90, aet: true, pens: pensLine })
+    } else {
+      scoreSeg = buildScore(ftLine, { ht })
+    }
     block = scorerBlock(homeGoals, awayGoals, eol)
+  } else if (knockout) {
+    // Never render a.e.t./penalties from goals we can't reconcile with the final
+    // — a bare "1-1" on a knockout line would be wrong. Leave it for a human.
+    return { applied: false, reason: 'knockout-unreconciled' }
+  } else {
+    scoreSeg = buildScore(ftLine)
   }
 
   let newBlock = `${hit[1]}${hit[2]}${hit[3]}${scoreSeg}${hit[4]}${hit[5]}${hit[6]}`

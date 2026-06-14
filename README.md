@@ -104,14 +104,17 @@ in at [`2026--usa/cup.txt`](https://github.com/openfootball/worldcup/blob/master
 It only reads feeds and prints — it never writes anything.
 
 `npm run of:autofill` is the automated counterpart: it makes the same edits and
-commits them to `cup.txt` for you. It's deliberately conservative — only
-**group-stage** matches (knockouts can go to a.e.t./penalties, which it leaves
-for manual review), only when **both** fallbacks agree on the final, and only on
-a line still reading `Home v Away` (so re-running never double-edits). Half-time
-and goalscorers come from ESPN and are written in the file's house style
-(`Home  FT (HT)  Away` + scorer block, `(pen.)`/`(OG)` markers, CRLF-safe);
-if the goals don't reconcile with the agreed final it writes a valid score-only
-line. All of that formatting/placement logic lives in
+commits them to `cup.txt` for you. It's deliberately conservative — only when
+**both** fallbacks agree on the final, and only on a line still reading
+`Home v Away` (so re-running never double-edits). Half-time and goalscorers come
+from ESPN and are written in the file's house style (`Home  FT (HT)  Away` +
+scorer block, `(pen.)`/`(OG)` markers, CRLF-safe); if the goals don't reconcile
+with the agreed final it writes a valid score-only line. **Knockouts** are
+rendered in full — `1-1 a.e.t. (1-0, 1-1), 4-2 pen.` with extra-time-aware
+half-time/FT-at-90 and shootout kicks excluded from the scorers; the penalty
+tally is taken from ESPN and cross-checked against TheSportsDB when it carries
+one (a disagreement, or a knockout whose goals can't be reconciled, is left for
+manual review rather than written as a bare score). All of that formatting/placement logic lives in
 [`scripts/cuptxt.mjs`](./scripts/cuptxt.mjs) and is unit-tested
 ([`test/cuptxt.test.js`](./test/cuptxt.test.js)). The
 [workflow](./.github/workflows/openfootball-autofill.yml) runs it every 5 minutes
