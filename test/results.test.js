@@ -27,6 +27,19 @@ describe('results merge (applyResults)', () => {
     expect(m.score).toEqual([2, 0]) // flipped to match (Mexico, South Africa)
   })
 
+  it('does NOT write a reversed score when the record home matches neither team', () => {
+    // A normalization gap could leave rec.home as a name that's neither of ours.
+    // The old bare-equality orientation would treat it as the away team and write
+    // the score backwards; it must skip instead.
+    const map = new Map([
+      ['pair:' + ['Mexico', 'South Africa'].sort().join('|'), {
+        home: 'Mexiko', away: 'Sudafrica', score: { ft: [3, 1] }, // mis-spelled → unmatched
+      }],
+    ])
+    const merged = applyResults(MATCHES, map)
+    expect(merged.find((m) => m.num === 1).score).toBeUndefined() // skipped, not reversed
+  })
+
   it('resolves knockout placeholders to real teams and records pens/AET', () => {
     // Map values hold already-parsed scores ({ ft, pens, aet }).
     const map = new Map([

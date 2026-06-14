@@ -125,8 +125,13 @@ export function applyResults(matches, map) {
 
     if (m.stage === 'Group') {
       if (!rec.score) return m
-      // Orient the score (and goals) to our (t1, t2) ordering.
-      const aligned = rec.home === normalizeTeam(m.t1)
+      // Orient the score (and goals) to our (t1, t2) ordering. Guard: if the
+      // record's home matches NEITHER of our teams (a normalization gap), don't
+      // assume it's the away team and write a REVERSED score — skip it.
+      const nt1 = normalizeTeam(m.t1)
+      const nt2 = normalizeTeam(m.t2)
+      if (rec.home !== nt1 && rec.home !== nt2) return m
+      const aligned = rec.home === nt1
       const ft = aligned ? rec.score.ft : [rec.score.ft[1], rec.score.ft[0]]
       const out = { ...m, score: ft, goals: aligned ? { t1: rec.g1, t2: rec.g2 } : { t1: rec.g2, t2: rec.g1 } }
       return out

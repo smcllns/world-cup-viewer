@@ -29,7 +29,7 @@ export const LIVE_SOURCE = {
 // OpenFootball-style aliases like "Turkey" -> "Türkiye" and
 // "Czech Republic" -> "Czechia", so we only add ESPN's own divergences and let
 // normalizeTeam finish the job.)
-const ESPN_ALIASES = {
+export const ESPN_ALIASES = {
   'United States': 'USA',
   'Korea Republic': 'South Korea',
   'IR Iran': 'Iran',
@@ -41,7 +41,7 @@ const ESPN_ALIASES = {
   Curacao: 'Curaçao',
 }
 
-const normEspn = (name) => normalizeTeam(ESPN_ALIASES[name] || name)
+export const normEspn = (name) => normalizeTeam(ESPN_ALIASES[name] || name)
 const toNum = (v) => (v == null || v === '' ? null : Number(v))
 
 // Parse ESPN's competitor.score / shootout into our shapes.
@@ -93,12 +93,11 @@ function parseEspnEvents(comp, homeId, awayId) {
   return { goals, cards, subs }
 }
 
-// Build a lookup of live records from ESPN's scoreboard. Every record is stored
-// twice: by team pair (unique per tournament for played matches; survives
-// simultaneous group kickoffs) and by kickoff instant (lets us match knockout
-// games whose teams our static schedule still shows as placeholders).
-// YYYYMMDD for yesterday/today/tomorrow (UTC) — a small window around "now".
-function scoreboardDates(now = new Date()) {
+// YYYYMMDD for the day before/of/after `base` (UTC) — a small window that
+// absorbs ESPN filing a match under an adjacent date. Used by fetchLive (around
+// "now") and by the autofill's espnGoals (around a match's kickoff).
+export function scoreboardDates(base = new Date()) {
+  const now = base
   const ymd = (off) =>
     new Date(now.getTime() + off * 86_400_000).toISOString().slice(0, 10).replace(/-/g, '')
   return [ymd(-1), ymd(0), ymd(1)]
@@ -133,6 +132,10 @@ async function scoreboardEvents(signal) {
   return events
 }
 
+// Build a lookup of live records from ESPN's scoreboard. Every record is stored
+// twice: by team pair (unique per tournament for played matches; survives
+// simultaneous group kickoffs) and by kickoff instant (lets us match knockout
+// games whose teams our static schedule still shows as placeholders).
 export async function fetchLive(signal) {
   const map = new Map()
   for (const ev of await scoreboardEvents(signal)) {

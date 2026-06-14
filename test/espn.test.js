@@ -1,7 +1,19 @@
 import { describe, it, expect, vi } from 'vitest'
-import { fetchLive, applyLive, espnFinalScore } from '../src/services/espn.js'
+import { fetchLive, applyLive, espnFinalScore, scoreboardDates } from '../src/services/espn.js'
 import { pairKey } from '../src/services/results.js'
 import { MATCHES } from '../src/data/matches.js'
+
+describe('scoreboardDates', () => {
+  it('returns the UTC day before/of/after a base instant', () => {
+    expect(scoreboardDates(new Date('2026-06-14T12:00:00Z'))).toEqual(['20260613', '20260614', '20260615'])
+  })
+
+  it('covers a midnight-ET kickoff under the right UTC date (the late-match lag bug)', () => {
+    // 00:00 ET June 14 = 04:00Z June 14 — must include 20260614, which ESPN's
+    // default slate was lagging behind.
+    expect(scoreboardDates(new Date('2026-06-14T04:00:00Z'))).toContain('20260614')
+  })
+})
 
 const match1 = MATCHES.find((m) => m.num === 1) // Mexico v South Africa
 const instOf = (m) => 'inst:' + new Date(m.ko).getTime()

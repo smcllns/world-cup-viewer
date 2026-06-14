@@ -21,7 +21,7 @@ const CUP_TXT_ALIASES = {
 export const cupName = (team) => CUP_TXT_ALIASES[team] || team
 
 // ESPN's team-name divergences from ours (mirrors src/services/espn.js).
-const ESPN_ALIASES = {
+export const ESPN_ALIASES = {
   'United States': 'USA',
   'Korea Republic': 'South Korea',
   'IR Iran': 'Iran',

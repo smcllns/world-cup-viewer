@@ -21,8 +21,14 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      # Drift guard: fails (→ email) if upstream cup.txt renames/restructures a
+      # team so the autofill can no longer locate a match line. Runs first and
+      # always, so a rename is caught even when the feed is also stale.
+      - run: npm run check:sync
+        if: always()
       # The script exits 0 before the first match finishes and after every
       # finished match has a score, so the job is green outside the tournament.
       - run: npm run check:feed
+        if: always()
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # raises the GitHub API rate limit

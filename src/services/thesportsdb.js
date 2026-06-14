@@ -22,13 +22,14 @@ export const BACKUP_SOURCE = {
 
 // TheSportsDB spellings that differ from ours. (normalizeTeam already maps the
 // OpenFootball-style aliases like "Turkey" -> "Türkiye".)
-const SDB_ALIASES = {
+export const SDB_ALIASES = {
   'United States': 'USA',
   'Korea Republic': 'South Korea',
   'IR Iran': 'Iran',
   "Côte d'Ivoire": 'Ivory Coast',
   'Cabo Verde': 'Cape Verde',
   'Bosnia and Herzegovina': 'Bosnia & Herzegovina',
+  'Bosnia-Herzegovina': 'Bosnia & Herzegovina', // TheSportsDB's actual spelling (was missing)
   'DR Congo': 'DR Congo',
   'Congo DR': 'DR Congo',
   Curacao: 'Curaçao',
@@ -37,7 +38,7 @@ const SDB_ALIASES = {
 // Statuses that mean the match is over (TheSportsDB uses a few spellings).
 const FINISHED = new Set(['FT', 'AET', 'PEN', 'AP', 'Match Finished', 'After Pen.'])
 
-const normSdb = (name) => normalizeTeam(SDB_ALIASES[name] || name)
+export const normSdb = (name) => normalizeTeam(SDB_ALIASES[name] || name)
 const toNum = (v) => (v == null || v === '' ? null : Number(v))
 
 function instantOf(ev) {

@@ -38,7 +38,7 @@
 import { execSync } from 'node:child_process'
 import { MATCHES } from '../src/data/matches.js'
 import { fetchResults, applyResults, openFootballFinalScore, normalizeTeam } from '../src/services/results.js'
-import { fetchLive, applyLive, espnFinalScore, LIVE_SOURCE } from '../src/services/espn.js'
+import { fetchLive, applyLive, espnFinalScore, LIVE_SOURCE, scoreboardDates } from '../src/services/espn.js'
 import { fetchBackup, sdbFinalScore, sdbFinalPens } from '../src/services/thesportsdb.js'
 import { applyEdit, orientFt, normEspn, parseClock } from './cuptxt.mjs'
 
@@ -52,8 +52,6 @@ const ESPN_ONLY_AFTER_MIN = 150
 
 const eqFt = (a, b) => a && b && a[0] === b[0] && a[1] === b[1]
 const minutesSince = (iso) => (Date.now() - new Date(iso).getTime()) / 60_000
-const etDate = (iso) =>
-  new Date(iso).toLocaleDateString('en-CA', { timeZone: 'America/New_York' }).replace(/-/g, '')
 
 const dayCache = new Map()
 async function eventsForDate(yyyymmdd) {
@@ -71,13 +69,31 @@ async function eventsForDate(yyyymmdd) {
 
 const toNum = (v) => (v == null || v === '' ? null : Number(v))
 
+// All ESPN events for the dates around a match's kickoff (UTC ±1 day, same window
+// as fetchLive), deduped — so a match ESPN files under an adjacent date isn't
+// missed (the single-date version dropped midnight-ET games' scorer/extra-time
+// detail).
+async function espnEventsAround(ko) {
+  const seen = new Set()
+  const events = []
+  for (const d of scoreboardDates(new Date(ko))) {
+    for (const ev of await eventsForDate(d)) {
+      const id = ev.id ?? ev.uid ?? ev.date
+      if (id && seen.has(id)) continue
+      if (id) seen.add(id)
+      events.push(ev)
+    }
+  }
+  return events
+}
+
 // ESPN detail for our match, oriented to t1/t2:
 //   { t1Goals, t2Goals, pens, aet }
 // goals are [{ name, minute, extra, pen, og }] (shootout kicks excluded); pens
 // is [t1Pens, t2Pens] or null; aet is true when the match went to extra time.
 // Null when the event isn't found.
 async function espnGoals(m) {
-  const events = await eventsForDate(etDate(m.ko))
+  const events = await espnEventsAround(m.ko)
   const nt1 = normalizeTeam(m.t1)
   const nt2 = normalizeTeam(m.t2)
   for (const ev of events) {

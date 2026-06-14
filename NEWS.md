@@ -5,6 +5,20 @@ calendar day; bullet points capture every change made that day (features, fixes,
 data/source updates, deployment). Newest day on top.
 
 ## 2026-06-14
+- **Hardening pass — kill the mapping-mismatch bug class (PR):** an audit (driven
+  by the two name/date bugs below) found and fixed more of the same class:
+  (1) **TheSportsDB spells it "Bosnia-Herzegovina"** (hyphen), which our aliases
+  didn't map — Bosnia's matches would silently fail the cross-check; (2) the
+  autofill's `espnGoals` still fetched a **single ESPN date** (the lag the live
+  fix addressed) — now uses the ±1-day window so a midnight-ET match's
+  scorers/extra-time aren't dropped; (3) `applyResults` could write a **reversed
+  score** if a feed name matched neither team — now it skips. New tests pin every
+  **real captured ESPN + TheSportsDB spelling** to a known team (would've caught
+  both prior bugs), assert the duplicated ESPN alias maps stay in sync, exercise
+  `applyEdit` against a frozen real cup.txt snapshot (CRLF + idempotency), and
+  check static-data integrity. Plus `npm run check:sync` — a runtime drift guard
+  (wired into the hourly feed-freshness job) that fails if upstream cup.txt renames
+  a team so the autofill can't find its line. 146 tests.
 - **Fix: autofill couldn't sync Türkiye/Czechia matches (name spelling).** Our app
   and the feeds use the official FIFA names (Türkiye, Czechia), but cup.txt's match
   lines use simpler spellings (Turkey, Czech Republic) — so the writer searched for
