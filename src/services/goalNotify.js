@@ -66,9 +66,19 @@ export function goalNotification({ match, side, goal }) {
   const min =
     goal.minute != null ? `${goal.minute}${goal.extra ? '+' + goal.extra : ''}'` : ''
   const flags = `${goal.og ? ' (OG)' : ''}${goal.penalty ? ' (pen)' : ''}`
-  const score = Array.isArray(match.score)
-    ? `${match.t1} ${match.score[0]}–${match.score[1]} ${match.t2}`
-    : `${match.t1} v ${match.t2}`
+  // Derive the score line from the goal lists, NOT match.score: ESPN appends a
+  // goal to its event list a beat before it bumps the aggregate score, so reading
+  // match.score here can show a stale 0–0 next to the scorer who just netted. The
+  // goal lists already credit own goals to the right side and exclude shootout
+  // kicks, so their lengths are the live score that's consistent with this goal.
+  const t1n = match.goals?.t1?.length
+  const t2n = match.goals?.t2?.length
+  const score =
+    t1n != null && t2n != null
+      ? `${match.t1} ${t1n}–${t2n} ${match.t2}`
+      : Array.isArray(match.score)
+        ? `${match.t1} ${match.score[0]}–${match.score[1]} ${match.t2}`
+        : `${match.t1} v ${match.t2}`
   const scorer = goal.name ? `${goal.name}${flags} ${min}`.trim() : `${team}${flags} ${min}`.trim()
   return {
     title: `⚽ GOAL — ${team}`,

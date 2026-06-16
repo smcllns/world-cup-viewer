@@ -115,6 +115,26 @@ describe('goalNotification', () => {
     expect(og.body).toContain('(OG)')
   })
 
+  it('derives the score line from the goal lists, not the lagging match.score', () => {
+    // ESPN appended Mbappé's goal to its event list but match.score still reads
+    // 0–0 for one poll — the notification must show 1–0, not the stale 0–0.
+    const m = {
+      num: 40,
+      t1: 'France',
+      t2: 'Senegal',
+      score: [0, 0], // stale
+      goals: { t1: [goal('Mbappé', 12)], t2: [] },
+    }
+    const n = goalNotification({ match: m, side: 't1', goal: goal('Mbappé', 12) })
+    expect(n.body).toBe("Mbappé 12'\nFrance 1–0 Senegal")
+  })
+
+  it('counts an own goal toward the side it benefits in the derived score', () => {
+    const m = { num: 1, t1: 'A', t2: 'B', score: [0, 0], goals: { t1: [goal('Smith', 30, { og: true })], t2: [] } }
+    const n = goalNotification({ match: m, side: 't1', goal: goal('Smith', 30, { og: true }) })
+    expect(n.body).toContain('A 1–0 B')
+  })
+
   it('falls back to the team name when the scorer is unknown', () => {
     const m = { num: 1, t1: 'A', t2: 'B', score: [1, 0] }
     const n = goalNotification({ match: m, side: 't1', goal: goal('', 12) })

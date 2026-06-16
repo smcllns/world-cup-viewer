@@ -5,6 +5,12 @@ calendar day; bullet points capture every change made that day (features, fixes,
 data/source updates, deployment). Newest day on top.
 
 ## 2026-06-16
+- **Fix: goal alert showed the scorer next to a stale 0–0.** ESPN appends a goal
+  to its event list a beat before it bumps the aggregate score, so the alert could
+  read e.g. "Mbappé 12' — France 0–0 Senegal". The notification's score line now
+  derives from the goal lists themselves (which already credit own goals to the
+  right side and exclude shootout kicks), so it's always consistent with the goal
+  that triggered it. +2 tests (189 total).
 - **Goal alerts — browser notification when a goal is scored.** New 🔔 toggle in
   the results bar: when on, the app raises a desktop/mobile notification (scorer,
   minute, and the running score) the moment a new goal lands in a live match. A
