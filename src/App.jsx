@@ -151,7 +151,13 @@ export default function App() {
     const merged = applyLive(applyLive(applyResults(MATCHES, results), history), live)
     const sources = [
       results && { name: RESULTS_SOURCE.name, score: (m) => openFootballFinalScore(m, results) },
-      live && { name: LIVE_SOURCE.name, score: (m) => espnFinalScore(m, live) },
+      // ESPN confirms via the live window OR the by-date backfill — otherwise a
+      // finished match silently drops to "1 source" once it ages out of ESPN's
+      // rolling 3-day scoreboard, even though ESPN still has the final.
+      (live || history) && {
+        name: LIVE_SOURCE.name,
+        score: (m) => (live && espnFinalScore(m, live)) || (history && espnFinalScore(m, history)),
+      },
       backup && { name: BACKUP_SOURCE.name, score: (m) => sdbFinalScore(m, backup) },
     ].filter(Boolean)
     return annotateScoreChecks(merged, sources)

@@ -5,6 +5,14 @@ calendar day; bullet points capture every change made that day (features, fixes,
 data/source updates, deployment). Newest day on top.
 
 ## 2026-06-15
+- **Count ESPN as a confirming source for matches past the live window.** The
+  source reconciler only checked ESPN's rolling 3-day window, so a finished match
+  silently dropped to "1 source" once it aged out — even though ESPN still has the
+  final. It now also consults the by-date backfill map, so every finished match
+  reflects ESPN's confirmation (the opening-day games that TheSportsDB carries now
+  show 3 sources; the rest show 2 = OpenFootball + ESPN). TheSportsDB itself is
+  still stalled at 5 events (last June 13), so it is not the source of the newer
+  "2 sources" labels — ESPN is.
 - **Fix: finished matches lost their yellow/red cards in the detail view.**
   OpenFootball (the source of record) carries final scores + goals but no cards or
   subs, and `applyLive` had been early-returning once OpenFootball had the score —
