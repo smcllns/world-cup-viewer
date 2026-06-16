@@ -689,6 +689,19 @@ select {
   font-size: 0.76rem; color: var(--text-faint); cursor: pointer;
   margin-left: auto;
 }
+.results-alerts {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 0.76rem; color: var(--text-faint); cursor: pointer;
+}
+.results-alert-scope {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  border-radius: 8px;
+  font-size: 0.74rem;
+  padding: 3px 6px;
+  cursor: pointer;
+}
 .results-refresh {
   background: transparent;
   border: 1px solid var(--border);

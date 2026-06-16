@@ -19,6 +19,9 @@ city/stadium, a bracket, group standings, and live results.
   one-click "⭐ My Teams" view (saved in your browser).
 - **Next-match bar** — a live countdown to the next kickoff (prioritising your
   followed teams, or "Live now"), with a jump-to-match button.
+- **Goal alerts** — opt-in 🔔 browser notifications when a goal is scored (scorer,
+  minute, and the running score), scoped to your followed teams or all matches.
+  Fires while the app is open in a tab (no backend, so no background push).
 - **Four views** — chronological schedule, a Sunday–Saturday week calendar,
   group standings, and the knockout bracket.
 - **Match detail** — click any match for full venue/time/broadcast info, the live

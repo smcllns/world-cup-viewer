@@ -16,6 +16,7 @@ import { fetchResults, applyResults, RESULTS_SOURCE, openFootballFinalScore } fr
 import { fetchLive, applyLive, LIVE_SOURCE, espnFinalScore, historyDates } from './services/espn.js'
 import { fetchBackup, BACKUP_SOURCE, sdbFinalScore } from './services/thesportsdb.js'
 import { annotateScoreChecks } from './services/reconcile.js'
+import { detectGoals, goalNotification } from './services/goalNotify.js'
 import { useFollow } from './context/follow.jsx'
 import { DetailContext } from './context/detail.js'
 
@@ -40,6 +41,20 @@ const INITIAL_FILTERS = {
   timeframe: 'all',
   feed: 'both',
   myTeams: false,
+}
+
+// Goal-alert preferences, persisted to localStorage. `enabled` is only honoured
+// if the browser still grants Notification permission (it may have been revoked
+// since), so the toggle reflects reality rather than a stale "on".
+const GOAL_ALERTS_KEY = 'wc2026:goalAlerts'
+function readGoalAlerts() {
+  try {
+    const v = JSON.parse(localStorage.getItem(GOAL_ALERTS_KEY) || '{}')
+    const granted = typeof Notification !== 'undefined' && Notification.permission === 'granted'
+    return { enabled: Boolean(v.enabled) && granted, scope: v.scope === 'all' ? 'all' : 'followed' }
+  } catch {
+    return { enabled: false, scope: 'followed' }
+  }
 }
 
 // How many filters are actively narrowing the results (ignores tz & feed view).
@@ -101,7 +116,10 @@ export default function App() {
   const [resultsState, setResultsState] = useState('loading') // loading | ok | error
   const [updatedAt, setUpdatedAt] = useState(null)
   const [autoRefresh, setAutoRefresh] = useState(true)
+  const [goalAlerts, setGoalAlerts] = useState(readGoalAlerts)
   const abortRef = useRef(null)
+  // Last seen goal-key snapshot (match num -> Set), for diffing new goals.
+  const goalSnapRef = useRef(null)
 
   const loadResults = useCallback(async () => {
     abortRef.current?.abort()
@@ -172,6 +190,62 @@ export default function App() {
     const id = setInterval(loadResults, liveCount > 0 ? LIVE_REFRESH_MS : REFRESH_MS)
     return () => clearInterval(id)
   }, [autoRefresh, loadResults, liveCount])
+
+  // Persist goal-alert preferences.
+  useEffect(() => {
+    try {
+      localStorage.setItem(GOAL_ALERTS_KEY, JSON.stringify(goalAlerts))
+    } catch {
+      /* ignore quota / privacy-mode errors */
+    }
+  }, [goalAlerts])
+
+  // Goal alerts: diff each merged snapshot against the last and raise a browser
+  // notification for any new goal in a live match within scope. The snapshot is
+  // always advanced (even when alerts are off) so enabling mid-match doesn't
+  // replay the goals already on the board. Fires only while this tab is open —
+  // the static site has no backend for true background push.
+  useEffect(() => {
+    const { next, events } = detectGoals(goalSnapRef.current, matches, {
+      scope: goalAlerts.scope,
+      followed,
+    })
+    goalSnapRef.current = next
+    if (!goalAlerts.enabled) return
+    if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return
+    const icon = `${import.meta.env.BASE_URL}icon-192.png`
+    for (const ev of events) {
+      const n = goalNotification(ev)
+      try {
+        new Notification(n.title, { body: n.body, tag: n.tag, icon, renotify: true })
+      } catch {
+        /* some browsers throw if constructed outside a SW; ignore */
+      }
+    }
+  }, [matches, goalAlerts, followed])
+
+  // Turn goal alerts on/off. Enabling needs Notification permission, which must be
+  // requested from a user gesture (this click) — if denied, the toggle stays off.
+  const toggleGoalAlerts = useCallback(async () => {
+    if (goalAlerts.enabled) {
+      setGoalAlerts((s) => ({ ...s, enabled: false }))
+      return
+    }
+    if (typeof Notification === 'undefined') {
+      alert('This browser does not support notifications.')
+      return
+    }
+    let perm = Notification.permission
+    if (perm === 'default') {
+      try {
+        perm = await Notification.requestPermission()
+      } catch {
+        perm = 'denied'
+      }
+    }
+    if (perm === 'granted') setGoalAlerts((s) => ({ ...s, enabled: true }))
+    else alert('Notifications are blocked. Allow them for this site in your browser settings.')
+  }, [goalAlerts.enabled])
 
   // Keep the URL in sync with shareable state.
   useEffect(() => {
@@ -319,6 +393,25 @@ export default function App() {
           />
           auto
         </label>
+        <label
+          className="results-alerts"
+          title="Browser notification when a goal is scored (while this tab is open)"
+        >
+          <input type="checkbox" checked={goalAlerts.enabled} onChange={toggleGoalAlerts} />
+          🔔 goals
+        </label>
+        {goalAlerts.enabled && (
+          <select
+            className="results-alert-scope"
+            value={goalAlerts.scope}
+            onChange={(e) => setGoalAlerts((s) => ({ ...s, scope: e.target.value }))}
+            title="Which matches trigger a goal alert"
+            aria-label="Goal-alert scope"
+          >
+            <option value="followed">⭐ my teams</option>
+            <option value="all">all matches</option>
+          </select>
+        )}
         <button className="results-refresh" onClick={loadResults} disabled={resultsState === 'loading'}>
           ⟳ Refresh
         </button>

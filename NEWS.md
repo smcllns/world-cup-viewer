@@ -4,6 +4,19 @@ A dated changelog for the World Cup 2026 Schedule Viewer. Each heading is a
 calendar day; bullet points capture every change made that day (features, fixes,
 data/source updates, deployment). Newest day on top.
 
+## 2026-06-16
+- **Goal alerts — browser notification when a goal is scored.** New 🔔 toggle in
+  the results bar: when on, the app raises a desktop/mobile notification (scorer,
+  minute, and the running score) the moment a new goal lands in a live match. A
+  scope dropdown switches between ⭐ my teams (default) and all matches. It reuses
+  the existing ESPN poll (~30s while a match is live) to diff each snapshot for
+  new goals, so there's no extra fetching. Enabling requests Notification
+  permission (and the toggle reflects whether it's actually granted); the
+  preference persists. Because the site is static (no backend), alerts fire only
+  while the app is open in a tab — backgrounded is fine. Pure detection/formatting
+  logic lives in `src/services/goalNotify.js` and is unit-tested (+14 tests, 187
+  total).
+
 ## 2026-06-15
 - **Count ESPN as a confirming source for matches past the live window.** The
   source reconciler only checked ESPN's rolling 3-day window, so a finished match
