@@ -5,6 +5,13 @@ calendar day; bullet points capture every change made that day (features, fixes,
 data/source updates, deployment). Newest day on top.
 
 ## 2026-06-16
+- **Fix: a feed gap could flood you with dozens of stale goal alerts.** The
+  "seen goals" snapshot was replaced every poll, so a transient ESPN gap (a poll
+  briefly returning fewer events and dropping live matches' goals) made every goal
+  look new when the next poll restored them — one user saw 31 at once. The snapshot
+  now ACCUMULATES (unions) every goal key ever seen, so a disappear/reappear is
+  silent. Added a defense-in-depth cap: a single poll yielding >5 new goals is
+  treated as a desync and suppressed rather than fired. +1 regression test.
 - **Fix: goal alert showed the scorer next to a stale 0–0.** ESPN appends a goal
   to its event list a beat before it bumps the aggregate score, so the alert could
   read e.g. "Mbappé 12' — France 0–0 Senegal". The notification's score line now

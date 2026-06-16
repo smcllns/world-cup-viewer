@@ -213,6 +213,11 @@ export default function App() {
     goalSnapRef.current = next
     if (!goalAlerts.enabled) return
     if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return
+    // Defense-in-depth: a healthy poll yields at most a couple of new goals. A
+    // large batch means the snapshot desynced (e.g. a feed gap restoring many
+    // matches at once) — suppress rather than spam. The snapshot is already
+    // advanced above, so these stay silent and won't re-fire.
+    if (events.length > 5) return
     const icon = `${import.meta.env.BASE_URL}icon-192.png`
     for (const ev of events) {
       const n = goalNotification(ev)

@@ -42,19 +42,27 @@ export function inScope(m, scope, followed) {
 // — that prevents dumping every existing goal when the app loads or when goal
 // alerts are first enabled. Notifications are further limited to live-ish matches
 // within scope; the snapshot tracks every match so identities stay warm.
+//
+// The per-match snapshot ACCUMULATES (unions) every goal key ever seen rather than
+// replacing it each poll. A transient ESPN gap — a poll that briefly returns fewer
+// events and drops a live match's goals — would otherwise make those goals look
+// "new" and re-fire when the next poll restores them, flooding the user with dozens
+// of stale alerts. Once seen, a goal stays seen, so a disappear/reappear is silent.
 export function detectGoals(prev, matches, { scope = 'followed', followed } = {}) {
   const next = new Map()
   const events = []
   for (const m of matches) {
-    next.set(m.num, goalKeys(m))
-    if (!prev || !prev.has(m.num)) continue // first sighting: record only
-    if (!isLiveish(m) || !inScope(m, scope, followed)) continue
-    const before = prev.get(m.num)
+    const before = prev?.get(m.num)
+    const seen = before ? new Set(before) : new Set()
+    const eligible = Boolean(before) && isLiveish(m) && inScope(m, scope, followed)
     for (const side of ['t1', 't2']) {
       for (const g of m.goals?.[side] || []) {
-        if (!before.has(goalKey(side, g))) events.push({ match: m, side, goal: g })
+        const k = goalKey(side, g)
+        if (eligible && !seen.has(k)) events.push({ match: m, side, goal: g })
+        seen.add(k)
       }
     }
+    next.set(m.num, seen)
   }
   return { next, events }
 }

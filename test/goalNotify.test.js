@@ -37,6 +37,28 @@ describe('detectGoals', () => {
     expect(events).toEqual([])
   })
 
+  it('does not re-fire goals that vanish on a transient feed gap then return', () => {
+    // The 31-stale-alerts bug: a poll briefly drops a live match's goals (e.g. one
+    // ESPN date fetch hiccups), then the next poll restores them. They must stay
+    // silent — once seen, always seen.
+    const withGoals = [live(1, 'France', 'Senegal', [goal('Mbappé', 20)], [goal('Sarr', 35)])]
+    let snap = detectGoals(null, withGoals, { scope: 'all' }).next // first sighting: record
+    // ...one real new goal fires normally.
+    const plusOne = [live(1, 'France', 'Senegal', [goal('Mbappé', 20)], [goal('Sarr', 35), goal('Dia', 60)])]
+    const r1 = detectGoals(snap, plusOne, { scope: 'all' })
+    expect(r1.events).toHaveLength(1)
+    snap = r1.next
+
+    // Transient gap: the match drops out of the feed entirely (no goals this poll).
+    const gap = [{ num: 1, t1: 'France', t2: 'Senegal', goals: { t1: [], t2: [] } }]
+    snap = detectGoals(snap, gap, { scope: 'all' }).next
+
+    // Recovery: all three goals are back. None should re-fire.
+    const restored = [live(1, 'France', 'Senegal', [goal('Mbappé', 20)], [goal('Sarr', 35), goal('Dia', 60)])]
+    const r2 = detectGoals(snap, restored, { scope: 'all' })
+    expect(r2.events).toEqual([])
+  })
+
   it('emits an event per goal when two arrive in the same poll', () => {
     const before = detectGoals(null, [live(1, 'A', 'B')], { scope: 'all' }).next
     const after = [live(1, 'A', 'B', [goal('X', 10)], [goal('Y', 12)])]
