@@ -104,6 +104,9 @@ export default function App() {
   // Per-day fold overrides: dayKey -> bool. Undefined means "follow default"
   // (past days collapsed, today + future expanded).
   const [collapsedDays, setCollapsedDays] = useState({})
+  // Past days show by default (as collapsed headers); the button drops them
+  // from the schedule entirely for a phone-clean view that opens on today.
+  const [showPast, setShowPast] = useState(true)
 
   // Results merged into the static schedule from three independent sources:
   //   • OpenFootball (`results`) — source of record (post-match final scores).
@@ -304,20 +307,13 @@ export default function App() {
     return [...map.entries()].sort((a, b) => a[0].localeCompare(b[0]))
   }, [filtered, tz])
 
-  // Bulk fold control for past days. They already collapse individually by
-  // default; this lets you re-collapse everything you've opened (or expand it
-  // all) in one click, which matters once group play piles up many past days.
+  // Past days render as collapsed sections by default (and expand per-day as
+  // usual); "Hide past days" drops them from the schedule entirely.
   const pastDayKeys = useMemo(
     () => days.map(([k]) => k).filter((k) => k < todayKey),
     [days, todayKey],
   )
-  const allPastCollapsed = pastDayKeys.length > 0 && pastDayKeys.every((k) => dayCollapsed(k))
-  const setAllPastCollapsed = (collapsed) =>
-    setCollapsedDays((c) => {
-      const next = { ...c }
-      for (const k of pastDayKeys) next[k] = collapsed
-      return next
-    })
+  const visibleDays = showPast ? days : days.filter(([k]) => k >= todayKey)
 
   return (
     <DetailContext.Provider value={setDetailMatch}>
@@ -461,11 +457,11 @@ export default function App() {
             {view === 'schedule' && pastDayKeys.length > 0 && (
               <button
                 className="pastdays-btn"
-                onClick={() => setAllPastCollapsed(!allPastCollapsed)}
-                title={allPastCollapsed ? 'Expand all past days' : 'Collapse all past days'}
+                onClick={() => setShowPast((s) => !s)}
+                title={showPast ? 'Hide past days from the schedule' : 'Show past days'}
               >
-                <span className="chev" aria-hidden="true">{allPastCollapsed ? '▸' : '▾'}</span>
-                {allPastCollapsed ? 'Show past days' : 'Hide past days'}
+                <span className="chev" aria-hidden="true">{showPast ? '▾' : '▸'}</span>
+                {showPast ? 'Hide past days' : 'Show past days'}
                 <span className="myteams-count">{pastDayKeys.length}</span>
               </button>
             )}
@@ -503,7 +499,7 @@ export default function App() {
                 <p>No matches match your filters.</p>
               </div>
             )}
-            {days.map(([key, matches]) => {
+            {visibleDays.map(([key, matches]) => {
               const hidden = dayHidden(key)
               const collapsed = dayCollapsed(key)
               return (

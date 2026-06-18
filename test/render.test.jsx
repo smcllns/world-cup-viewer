@@ -91,22 +91,27 @@ describe('App renders (smoke test)', () => {
     expect(screen.getByText(/Next match|Your next match|Live now/)).toBeInTheDocument()
   })
 
-  it('folds days that have already passed and expands them on click', () => {
+  it('shows past days folded by default, expandable per-day, and hideable entirely', () => {
     // Pin "now" mid-tournament so the June 11 opener is firmly in the past.
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-06-20T16:00:00Z'))
     try {
       render(<App />)
-      // The opening day's header is a toggle, collapsed by default, and its
-      // match cards aren't rendered while folded.
+      // Past days appear as collapsed sections by default (no match cards yet).
       const opener = screen.getByRole('button', { name: /June 11, 2026/ })
       expect(opener).toHaveAttribute('aria-expanded', 'false')
       const openerDay = opener.closest('section.day')
       expect(within(openerDay).queryByRole('button', { name: /Details/ })).not.toBeInTheDocument()
-      // Clicking expands it and reveals the matches.
+      // Each past day still expands individually on click.
       fireEvent.click(opener)
       expect(opener).toHaveAttribute('aria-expanded', 'true')
       expect(within(openerDay).getAllByRole('button', { name: /Details/ }).length).toBeGreaterThan(0)
+      // "Hide past days" drops them from the schedule entirely; "Show" brings
+      // them back (folded again).
+      fireEvent.click(screen.getByRole('button', { name: /Hide past days/ }))
+      expect(screen.queryByRole('button', { name: /June 11, 2026/ })).not.toBeInTheDocument()
+      fireEvent.click(screen.getByRole('button', { name: /Show past days/ }))
+      expect(screen.getByRole('button', { name: /June 11, 2026/ })).toBeInTheDocument()
     } finally {
       vi.useRealTimers()
     }
@@ -125,23 +130,6 @@ describe('App renders (smoke test)', () => {
     }
   })
 
-  it('bulk-expands and re-collapses all past days from one button', () => {
-    vi.useFakeTimers()
-    vi.setSystemTime(new Date('2026-06-20T16:00:00Z'))
-    try {
-      render(<App />)
-      const opener = screen.getByRole('button', { name: /June 11, 2026/ })
-      expect(opener).toHaveAttribute('aria-expanded', 'false')
-      // "Show past days" expands every past day at once.
-      fireEvent.click(screen.getByRole('button', { name: /Show past days/ }))
-      expect(opener).toHaveAttribute('aria-expanded', 'true')
-      // The button flips to "Hide past days", which re-collapses them all.
-      fireEvent.click(screen.getByRole('button', { name: /Hide past days/ }))
-      expect(opener).toHaveAttribute('aria-expanded', 'false')
-    } finally {
-      vi.useRealTimers()
-    }
-  })
 })
 
 describe('Follow teams', () => {
