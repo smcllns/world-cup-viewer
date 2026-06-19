@@ -48,8 +48,13 @@ function scorelinesUpTo(cap) {
 // when it finishes third.
 function analyzeGroup(group, matches) {
   const all = matches.filter((m) => m.stage === 'Group' && m.group === group)
-  const played = all.filter((m) => m.score)
-  const remaining = all.filter((m) => !m.score)
+  // A match counts as decided only once it's FINAL. A live match carries a
+  // running score (m.live set), but its outcome isn't settled — so it's treated
+  // as remaining, exactly like an unplayed fixture. Counting a live score as
+  // final would clinch teams a result early (e.g. while they're still winning).
+  const decided = (m) => m.score && !m.live
+  const played = all.filter(decided)
+  const remaining = all.filter((m) => !decided(m))
   const names = TEAMS[group].map((t) => t.name)
 
   const cap = goalCap(rankGroup(group, played))

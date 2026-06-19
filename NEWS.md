@@ -5,6 +5,12 @@ calendar day; bullet points capture every change made that day (features, fixes,
 data/source updates, deployment). Newest day on top.
 
 ## 2026-06-18
+- **Fix: clinch detection counted a live match's running score as final.** A
+  team could read "clinched" mid-match (e.g. while it was still 1–0 up) because
+  the engine treated any match with a score as decided — but a live match carries
+  a provisional ESPN score. Live matches are now treated as undecided (enumerated
+  like unplayed fixtures), so a verdict only appears once results are actually
+  final. +1 test (201 total).
 - **Clinch & elimination detection.** The site now works out what's
   mathematically *locked* for each team — 🥇 won the group, ✅ through (top two,
   or guaranteed as one of the 8 best third-placed teams), or ❌ eliminated — using

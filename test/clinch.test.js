@@ -46,6 +46,25 @@ describe('clinch — within a single group', () => {
     expect(status['South Korea']).toBeNull()
   })
 
+  it('treats a live (in-progress) match as undecided, not a final result', () => {
+    // Scores that, if all final, clinch the group for Mexico (6 pts; nobody can
+    // reach 6). m28 is Mexico's *current* match, shown LIVE with a running 3–0.
+    const scores = {
+      1: [3, 0], // Mexico 3–0 South Africa (final)
+      2: [0, 0], // South Korea 0–0 Czechia (final)
+      25: [0, 0], // Czechia 0–0 South Africa (final)
+      28: [3, 0], // Mexico 3–0 South Korea (LIVE — running score)
+    }
+    // If the live game were counted as final, Mexico would read "won-group".
+    expect(computeClinch(withScores(scores))['Mexico']).toBe('won-group')
+
+    // But while it's live, the result isn't settled — no clinch yet.
+    const live = withScores(scores).map((m) =>
+      m.num === 28 ? { ...m, live: { clock: "60'", detail: '' } } : m,
+    )
+    expect(computeClinch(live)['Mexico']).toBeNull()
+  })
+
   it('does not claim a clinch while a rival can still overtake on points', () => {
     // Only matchday 1 played: far too open for anything to be locked.
     const status = computeClinch(
