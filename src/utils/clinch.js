@@ -95,73 +95,137 @@ function analyzeGroup(group, matches) {
   return { group, feasible: true, names, ranks, thirdBest, thirdWorst, groupThirdBest, groupThirdWorst }
 }
 
+// Points-only analysis via W/D/L enumeration (always cheap — 3^remaining ≤ 729),
+// independent of the goal-difference scoreline enumeration (which can be too
+// large for a lopsided group with several games left). Gives SOUND rank bounds
+// (ties counted pessimistically) and the group's third-place POINTS range.
+function pointsAnalysis(group, matches) {
+  const all = matches.filter((m) => m.stage === 'Group' && m.group === group)
+  const decided = (m) => m.score && !m.live
+  const remaining = all.filter((m) => !decided(m))
+  const names = TEAMS[group].map((t) => t.name)
+  const base = {}
+  for (const n of names) base[n] = 0
+  for (const m of all.filter(decided)) {
+    const [a, b] = m.score
+    if (a > b) base[m.t1] += 3
+    else if (b > a) base[m.t2] += 3
+    else { base[m.t1] += 1; base[m.t2] += 1 }
+  }
+
+  const pess = {} // worst (largest) finishing rank by points, ties AGAINST the team
+  const opt = {} // best (smallest) finishing rank by points, ties FOR the team
+  const minPts = {}
+  const maxPts = {}
+  for (const n of names) { pess[n] = 1; opt[n] = names.length; minPts[n] = Infinity; maxPts[n] = -Infinity }
+  let maxThirdPts = -Infinity
+  let minThirdPts = Infinity
+
+  const k = remaining.length
+  for (let mask = 0; mask < 3 ** k; mask++) {
+    const pts = { ...base }
+    let x = mask
+    for (let i = 0; i < k; i++) {
+      const o = x % 3
+      x = Math.floor(x / 3)
+      const m = remaining[i]
+      if (o === 0) pts[m.t1] += 3
+      else if (o === 1) pts[m.t2] += 3
+      else { pts[m.t1] += 1; pts[m.t2] += 1 }
+    }
+    for (const n of names) {
+      minPts[n] = Math.min(minPts[n], pts[n])
+      maxPts[n] = Math.max(maxPts[n], pts[n])
+      let above = 0
+      let equal = 0
+      for (const m of names) {
+        if (m === n) continue
+        if (pts[m] > pts[n]) above++
+        else if (pts[m] === pts[n]) equal++
+      }
+      pess[n] = Math.max(pess[n], 1 + above + equal)
+      opt[n] = Math.min(opt[n], 1 + above)
+    }
+    const third = names.map((n) => pts[n]).sort((a, b) => b - a)[2]
+    maxThirdPts = Math.max(maxThirdPts, third)
+    minThirdPts = Math.min(minThirdPts, third)
+  }
+  return { names, pess, opt, minPts, maxPts, maxThirdPts, minThirdPts }
+}
+
 // Public: map of team name -> clinch status string (or null).
 //   'won-group' — guaranteed to finish 1st in the group
 //   'top2'      — guaranteed to finish 1st or 2nd (advances directly)
 //   'third'     — guaranteed to advance as one of the 8 best third-placed teams
 //   'eliminated'— cannot advance under any remaining results
 //   null        — still undecided (or not yet computable)
+//
+// Two engines run per group: the exact scoreline enumeration (precise, includes
+// goal difference — but skipped when too large) and the points-only enumeration
+// (always available, sound). Statuses take the precise answer when present and
+// fall back to the sound points bound otherwise, so a verdict still appears for
+// lopsided groups the scoreline pass can't enumerate.
 export function computeClinch(matches) {
-  const groups = {}
-  for (const g of GROUPS) groups[g] = analyzeGroup(g, matches)
-  const allFeasible = GROUPS.every((g) => groups[g].feasible)
+  const sa = {} // scoreline analysis (may be infeasible)
+  const pa = {} // points analysis (always available)
+  for (const g of GROUPS) {
+    sa[g] = analyzeGroup(g, matches)
+    pa[g] = pointsAnalysis(g, matches)
+  }
+
+  // Third-place profiles for the cross-group race: precise when the group was
+  // enumerable, else a sound points-only bound (best = points + unbeatable
+  // GD/GF; worst = points + worst GD/GF) so comparisons never over-claim.
+  const PLUS = (Pts) => ({ Pts, GD: Infinity, GF: Infinity })
+  const MINUS = (Pts) => ({ Pts, GD: -Infinity, GF: -Infinity })
+  const bestThirdOf = (g) => (sa[g].feasible ? sa[g].groupThirdBest : PLUS(pa[g].maxThirdPts))
+  const worstThirdOf = (g) => (sa[g].feasible ? sa[g].groupThirdWorst : MINUS(pa[g].minThirdPts))
 
   const status = {}
   for (const g of GROUPS) {
-    const ga = groups[g]
-    if (!ga.feasible) {
-      for (const t of TEAMS[g]) status[t.name] = null
-      continue
-    }
-    for (const name of ga.names) {
-      const rset = ga.ranks[name]
-      const maxRank = Math.max(...rset)
-      const minRank = Math.min(...rset)
+    const others = GROUPS.filter((x) => x !== g)
+    for (const name of pa[g].names) {
+      const feasible = sa[g].feasible
+      const rset = feasible ? sa[g].ranks[name] : null
+      const saMax = feasible ? Math.max(...rset) : Infinity
+      const saMin = feasible ? Math.min(...rset) : Infinity
+      const { pess, opt } = { pess: pa[g].pess[name], opt: pa[g].opt[name] }
 
-      if (rset.size === 1 && rset.has(1)) {
+      // 1st place — needs goal-difference precision, OR a strict points lead.
+      if ((feasible && rset.size === 1 && rset.has(1)) || pess === 1) {
         status[name] = 'won-group'
         continue
       }
-      if (maxRank <= 2) {
+      // Top two — precise, or guaranteed on points alone.
+      if ((feasible && saMax <= 2) || pess <= 2) {
         status[name] = 'top2'
         continue
       }
 
-      // Beyond top two, the verdict depends on the cross-group third-place race,
-      // which we only judge when every group is exactly enumerable.
-      if (!allFeasible) {
-        status[name] = null
-        continue
-      }
+      const guaranteedTop3 = (feasible && saMax <= 3) || pess <= 3
+      const canReachTop2 = (feasible && saMin <= 2) || opt <= 2
+      const canReach3rd = (feasible && saMin <= 3) || opt <= 3
 
-      const others = GROUPS.filter((x) => x !== g)
-
-      // Guaranteed to advance as a third? Only if the team always finishes 1st–
-      // 3rd (never 4th) and even its WORST third-place profile out-ranks all but
-      // ≤7 of the other groups' STRONGEST possible thirds (ties counted against
-      // it, so this never over-claims).
-      const canFinish4thOrLower = maxRank >= 4
-      const worst3 = ga.thirdWorst[name]
-      if (!canFinish4thOrLower && worst3) {
-        const aheadAtBest = others.filter(
-          (x) => cmpThird(groups[x].groupThirdBest, worst3) >= 0,
-        ).length
+      // Through as a best third? Never finishes below 3rd, and even its WORST
+      // third out-ranks all but ≤7 of the other groups' BEST possible thirds.
+      if (guaranteedTop3) {
+        const myWorst =
+          feasible && sa[g].thirdWorst[name] ? sa[g].thirdWorst[name] : MINUS(pa[g].minPts[name])
+        const aheadAtBest = others.filter((x) => cmpThird(bestThirdOf(x), myWorst) >= 0).length
         if (aheadAtBest <= ADVANCING_THIRDS - 1) {
           status[name] = 'third'
           continue
         }
       }
 
-      // Eliminated? Only if it can't reach the top two AND, even in its BEST
-      // third-place case against every other group's WEAKEST third, more than 7
-      // teams are strictly ahead (so no advancing slot is reachable).
-      const best3 = ga.thirdBest[name]
-      let canAdvance = minRank <= 2
-      if (!canAdvance && best3) {
-        const aheadAtWorst = others.filter(
-          (x) => cmpThird(groups[x].groupThirdWorst, best3) > 0,
-        ).length
-        canAdvance = aheadAtWorst <= ADVANCING_THIRDS - 1
+      // Eliminated? Can't reach the top two, and even its BEST third is beaten by
+      // ≥8 of the other groups' WEAKEST possible thirds (or it can't reach 3rd).
+      let canAdvance = canReachTop2
+      if (!canAdvance && canReach3rd) {
+        const myBest =
+          feasible && sa[g].thirdBest[name] ? sa[g].thirdBest[name] : PLUS(pa[g].maxPts[name])
+        const forcedAhead = others.filter((x) => cmpThird(worstThirdOf(x), myBest) > 0).length
+        canAdvance = forcedAhead <= ADVANCING_THIRDS - 1
       }
       status[name] = canAdvance ? null : 'eliminated'
     }
@@ -224,7 +288,7 @@ export function clinchHeadline({ team, group, status }) {
     case 'top2':
       return `✅ ${team} are THROUGH to the Round of 32 (top two of Group ${group})`
     case 'third':
-      return `✅ ${team} are THROUGH as one of the eight best third-placed teams (Group ${group})`
+      return `✅ ${team} are THROUGH to the Round of 32 (Group ${group})`
     case 'eliminated':
       return `❌ ${team} are ELIMINATED from Group ${group}`
     default:
@@ -240,7 +304,7 @@ export function clinchBadge(status) {
     case 'top2':
       return { cls: 'c-in', label: '✅', text: 'Through', title: 'Has clinched a top-two finish — through to the Round of 32' }
     case 'third':
-      return { cls: 'c-in', label: '✅', text: 'Through (3rd)', title: 'Has clinched advancement as one of the 8 best third-placed teams' }
+      return { cls: 'c-in', label: '✅', text: 'Through', title: 'Has clinched advancement to the Round of 32 (guaranteed to finish in a qualifying place, worst case as a best third-placed team)' }
     case 'eliminated':
       return { cls: 'c-out', label: '❌', text: 'Eliminated', title: 'Cannot advance under any remaining results' }
     default:

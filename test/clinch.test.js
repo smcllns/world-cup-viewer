@@ -149,6 +149,30 @@ describe('clinch — full group stage, cross-group third place', () => {
     return withScores(score)
   }
 
+  it('marks a team THROUGH via the best-third bound even when its group is too lopsided to enumerate exactly', () => {
+    // Every group except D finished with a strict hierarchy, so each of their
+    // thirds has only 3 points — none can reach 6.
+    const score = {}
+    for (const g of GROUPS) {
+      if (g === 'D') continue
+      const idx = Object.fromEntries(TEAMS[g].map((t, k) => [t.name, k]))
+      for (const m of MATCHES) {
+        if (m.stage !== 'Group' || m.group !== g) continue
+        score[m.num] = idx[m.t1] < idx[m.t2] ? [1, 0] : [0, 1]
+      }
+    }
+    // Group D: USA 4–1 Paraguay (M4), Australia 2–0 Türkiye (M8), USA 2–0
+    // Australia (M29). USA on 6 with a big GD and 3 games left — too many high-
+    // cap scorelines to enumerate, so the points-based path must carry it.
+    score[4] = [4, 1]
+    score[8] = [2, 0]
+    score[29] = [2, 0]
+    const status = computeClinch(withScores(score))
+    // USA can still finish 3rd in their group, but a 6-point third is guaranteed
+    // top-8 here (no other group can produce a 6-point third) → THROUGH.
+    expect(status['USA']).toBe('third')
+  })
+
   it('matches the final qualification picture for every team', () => {
     const status = computeClinch(buildComplete())
     GROUPS.forEach((g, i) => {

@@ -5,6 +5,17 @@ calendar day; bullet points capture every change made that day (features, fixes,
 data/source updates, deployment). Newest day on top.
 
 ## 2026-06-19
+- **Fix: clinch engine missed real "Through" verdicts (e.g. USA in Group D).**
+  Two bugs: (1) a lopsided group with several games left blew the scoreline-
+  enumeration budget, so the engine bailed and showed no status for the whole
+  group; (2) the best-third advancement check required all 12 groups to be
+  exactly enumerable, far too strict mid-tournament. Added a cheap points-only
+  W/D/L analysis (always feasible) that runs alongside the exact scoreline pass;
+  statuses use the precise answer when available and a sound points bound
+  otherwise. The cross-group third-place race now uses each group's achievable
+  third-place points (precise GD when enumerable, sound bound when not), so a
+  team guaranteed no worse than 3rd with a points total that can't be beaten by 8
+  other groups' thirds is correctly marked Through. +1 regression test.
 - **Clinch announcements in the score-sync email.** When the OpenFootball
   autofill syncs a final score, it now also reports any clinch/elimination that
   result settles — comparing the clinch picture with vs without the new
