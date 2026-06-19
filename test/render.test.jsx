@@ -6,6 +6,7 @@ import Bracket from '../src/components/Bracket.jsx'
 import MatchCard from '../src/components/MatchCard.jsx'
 import { MATCHES } from '../src/data/matches.js'
 import { groupSlotMap } from '../src/utils/bracket.js'
+import { resolveClinchedSlots } from '../src/utils/clinch.js'
 import { DetailContext } from '../src/context/detail.js'
 import { FollowProvider } from '../src/context/follow.jsx'
 
@@ -183,11 +184,14 @@ describe('Schedule team-name slot tooltip', () => {
 })
 
 describe('Bracket clinch resolution', () => {
-  it('fills a Winner Group slot with the clinched winner', () => {
+  it('renders the clinched winner once slots are resolved in the match data', () => {
+    // Resolution happens upstream (App) so the team flows to every view; the
+    // Bracket just renders whatever names it's given.
+    const resolved = resolveClinchedSlots(MATCHES, { Mexico: 'won-group' })
     render(
       <FollowProvider>
         <DetailContext.Provider value={() => {}}>
-          <Bracket matches={MATCHES} tz="America/New_York" hideScores={false} clinch={{ Mexico: 'won-group' }} />
+          <Bracket matches={resolved} tz="America/New_York" hideScores={false} />
         </DetailContext.Provider>
       </FollowProvider>,
     )

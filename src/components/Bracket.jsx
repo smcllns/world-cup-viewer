@@ -1,6 +1,6 @@
 import { STAGE_LABELS } from '../data/matches.js'
 import { VENUES } from '../data/venues.js'
-import { FLAG_BY_TEAM, TEAMS } from '../data/teams.js'
+import { FLAG_BY_TEAM } from '../data/teams.js'
 import { BRACKET, matchesByNum } from '../utils/bracket.js'
 import { formatTime, tzAbbrev, teamKickoffTooltip } from '../utils/time.js'
 import { useFollow } from '../context/follow.jsx'
@@ -8,39 +8,21 @@ import { useDetail } from '../context/detail.js'
 import LiveBadge from './LiveBadge.jsx'
 import ScoreCheck from './ScoreCheck.jsx'
 
-// A "Winner Group X" slot becomes definite the moment that group is clinched, so
-// we resolve it to the team (with a 🥇 tag) before the feed fills it in. Runner-up
-// and third-place slots can't be placed from clinch status alone, so they wait.
-const WINNER_SLOT = /^Winner Group ([A-L])$/
-
-function Side({ name, ko, winners }) {
+// Team names are pre-resolved upstream (clinched "Winner Group X" slots are
+// already filled in the match data), so this just renders whatever it's given.
+function Side({ name, ko }) {
   const { isFollowed } = useFollow()
-  const slot = WINNER_SLOT.exec(name)
-  const winner = slot && winners[slot[1]]
-  const display = winner || name
-  const flag = FLAG_BY_TEAM[display]
-  const on = Boolean(flag) && isFollowed(display)
-  // The slot resolves to the clinched group winner, but per design the bracket
-  // shows just the team (flag + name) — no clinch emoji/tag here.
+  const flag = FLAG_BY_TEAM[name]
+  const on = Boolean(flag) && isFollowed(name)
   return (
-    <div className={`bx-side${on ? ' followed' : ''}`} title={teamKickoffTooltip(ko, display) || undefined}>
+    <div className={`bx-side${on ? ' followed' : ''}`} title={teamKickoffTooltip(ko, name) || undefined}>
       <span className="bx-flag">{flag || '·'}</span>
-      <span className={flag ? 'bx-team' : 'bx-tbd'}>{display}</span>
+      <span className={flag ? 'bx-team' : 'bx-tbd'}>{name}</span>
     </div>
   )
 }
 
-// group letter -> the team that has clinched winning it (if any).
-function groupWinners(clinch) {
-  const winners = {}
-  for (const g of Object.keys(TEAMS)) {
-    const w = TEAMS[g].find((t) => clinch?.[t.name] === 'won-group')
-    if (w) winners[g] = w.name
-  }
-  return winners
-}
-
-function BracketMatch({ num, byNum, tz, hideScores, winners }) {
+function BracketMatch({ num, byNum, tz, hideScores }) {
   const openDetail = useDetail()
   const m = byNum[num]
   if (!m) return null
@@ -64,8 +46,8 @@ function BracketMatch({ num, byNum, tz, hideScores, winners }) {
           </span>
         )}
       </div>
-      <Side name={m.t1} ko={m.ko} winners={winners} />
-      <Side name={m.t2} ko={m.ko} winners={winners} />
+      <Side name={m.t1} ko={m.ko} />
+      <Side name={m.t2} ko={m.ko} />
       {showScore && (
         <div className="bx-score">
           {m.score[0]}–{m.score[1]}
@@ -81,23 +63,22 @@ function BracketMatch({ num, byNum, tz, hideScores, winners }) {
   )
 }
 
-function Column({ title, nums, byNum, tz, hideScores, winners }) {
+function Column({ title, nums, byNum, tz, hideScores }) {
   return (
     <div className="bx-col">
       <div className="bx-col-head">{title}</div>
       <div className="bx-col-body">
         {nums.map((n) => (
-          <BracketMatch key={n} num={n} byNum={byNum} tz={tz} hideScores={hideScores} winners={winners} />
+          <BracketMatch key={n} num={n} byNum={byNum} tz={tz} hideScores={hideScores} />
         ))}
       </div>
     </div>
   )
 }
 
-export default function Bracket({ matches, tz, hideScores, clinch }) {
+export default function Bracket({ matches, tz, hideScores }) {
   const byNum = matchesByNum(matches)
-  const winners = groupWinners(clinch)
-  const common = { byNum, tz, hideScores, winners }
+  const common = { byNum, tz, hideScores }
   return (
     <div className="bracket-wrap">
       <p className="bracket-hint">Scroll horizontally to follow the path to the Final →</p>

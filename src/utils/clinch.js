@@ -169,6 +169,36 @@ export function computeClinch(matches) {
   return status
 }
 
+// group letter -> the team that has clinched winning it (if any).
+export function groupWinners(clinch) {
+  const winners = {}
+  for (const g of GROUPS) {
+    const w = TEAMS[g].find((t) => clinch?.[t.name] === 'won-group')
+    if (w) winners[g] = w.name
+  }
+  return winners
+}
+
+// Fill in knockout "Winner Group X" placeholders with the team that has clinched
+// that group, so the resolved team flows through to EVERY consumer (bracket,
+// match-detail modal, schedule cards, calendar) — not just one view. Only the
+// group-winner slot is determinable from clinch status; runner-up / third-place
+// slots stay as placeholders until results settle them.
+const WINNER_SLOT = /^Winner Group ([A-L])$/
+export function resolveClinchedSlots(matches, clinch) {
+  const winners = groupWinners(clinch)
+  if (!Object.keys(winners).length) return matches
+  const sub = (name) => {
+    const hit = WINNER_SLOT.exec(name)
+    return hit && winners[hit[1]] ? winners[hit[1]] : name
+  }
+  return matches.map((m) => {
+    const t1 = sub(m.t1)
+    const t2 = sub(m.t2)
+    return t1 === m.t1 && t2 === m.t2 ? m : { ...m, t1, t2 }
+  })
+}
+
 // Short label + tooltip for a status, for the UI. Returns null for null status.
 export function clinchBadge(status) {
   switch (status) {

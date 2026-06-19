@@ -126,7 +126,7 @@ export default function MatchCard({ match, tz, feed = 'both', hidden = false, cl
         </div>
 
         <div className="matchup">
-          <Team name={match.t1} ko={match.ko} clinch={clinch?.[match.t1]} group={match.group} slot={slotMap?.[match.group]} />
+          <Team name={match.t1} ko={match.ko} clinch={match.stage === 'Group' ? clinch?.[match.t1] : undefined} group={match.group} slot={slotMap?.[match.group]} />
           {hasScore ? (
             scoreHidden ? (
               <button
@@ -148,7 +148,7 @@ export default function MatchCard({ match, tz, feed = 'both', hidden = false, cl
           ) : (
             <span className="vs">v</span>
           )}
-          <Team name={match.t2} ko={match.ko} clinch={clinch?.[match.t2]} group={match.group} slot={slotMap?.[match.group]} />
+          <Team name={match.t2} ko={match.ko} clinch={match.stage === 'Group' ? clinch?.[match.t2] : undefined} group={match.group} slot={slotMap?.[match.group]} />
         </div>
 
         {/* Cross-source confirmation of the final score (OpenFootball / ESPN /

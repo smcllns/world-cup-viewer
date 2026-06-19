@@ -16,7 +16,7 @@ import { fetchResults, applyResults, RESULTS_SOURCE, openFootballFinalScore } fr
 import { fetchLive, applyLive, LIVE_SOURCE, espnFinalScore, historyDates } from './services/espn.js'
 import { fetchBackup, BACKUP_SOURCE, sdbFinalScore } from './services/thesportsdb.js'
 import { annotateScoreChecks } from './services/reconcile.js'
-import { computeClinch } from './utils/clinch.js'
+import { computeClinch, resolveClinchedSlots } from './utils/clinch.js'
 import { groupSlotMap } from './utils/bracket.js'
 import { detectGoals, goalNotification } from './services/goalNotify.js'
 import { useFollow } from './context/follow.jsx'
@@ -191,6 +191,10 @@ export default function App() {
   const clinch = useMemo(() => computeClinch(matches), [matches])
   // Group → Round-of-32 slot each finishing position feeds into.
   const slotMap = useMemo(() => groupSlotMap(MATCHES), [])
+  // Fill clinched group winners into knockout "Winner Group X" slots so the
+  // resolved team reaches every view consistently (schedule, week, bracket,
+  // detail modal, calendar) — not just the bracket's own rendering.
+  const displayMatches = useMemo(() => resolveClinchedSlots(matches, clinch), [matches, clinch])
 
   // Auto-refresh: poll fast (30s) while a match is live so the score and clock
   // track ESPN closely, and slow (2 min) otherwise to go easy on the feeds.
@@ -284,7 +288,7 @@ export default function App() {
 
   const filtered = useMemo(() => {
     const parsed = parseQuery(filters.search)
-    return matches.filter((m) => {
+    return displayMatches.filter((m) => {
       const venue = VENUES[m.venue]
       if (filters.myTeams && followed.size && !(followed.has(m.t1) || followed.has(m.t2)))
         return false
@@ -301,7 +305,7 @@ export default function App() {
       if (!matchesSearch(m, venue, parsed)) return false
       return true
     })
-  }, [filters, matches, followed])
+  }, [filters, displayMatches, followed])
 
   const days = useMemo(() => {
     const map = new Map()
@@ -492,13 +496,13 @@ export default function App() {
 
       {view === 'week' && (
         <main className="week-view">
-          <WeekView allMatches={matches} shown={filtered} tz={tz} dayHidden={dayHidden} />
+          <WeekView allMatches={displayMatches} shown={filtered} tz={tz} dayHidden={dayHidden} />
         </main>
       )}
 
       {view === 'schedule' && (
         <>
-          <NextMatch matches={matches} tz={tz} />
+          <NextMatch matches={displayMatches} tz={tz} />
           <main className="schedule">
             {days.length === 0 && (
               <div className="empty">
@@ -550,7 +554,7 @@ export default function App() {
 
       {view === 'bracket' && (
         <main className="bracket-view">
-          <Bracket matches={matches} tz={tz} hideScores={hideScores} clinch={clinch} />
+          <Bracket matches={displayMatches} tz={tz} hideScores={hideScores} />
         </main>
       )}
 
@@ -597,7 +601,7 @@ export default function App() {
       )}
       {calendarOpen && (
         <CalendarModal
-          matches={matches}
+          matches={displayMatches}
           filtered={filtered}
           onClose={() => setCalendarOpen(false)}
         />

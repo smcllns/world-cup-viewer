@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { MATCHES } from '../src/data/matches.js'
 import { TEAMS } from '../src/data/teams.js'
-import { computeClinch } from '../src/utils/clinch.js'
+import { computeClinch, resolveClinchedSlots, groupWinners } from '../src/utils/clinch.js'
 
 const GROUPS = Object.keys(TEAMS)
 
@@ -74,6 +74,28 @@ describe('clinch — within a single group', () => {
       }),
     )
     for (const t of TEAMS['A']) expect(status[t.name]).toBeNull()
+  })
+})
+
+describe('resolveClinchedSlots — fill knockout placeholders in the data', () => {
+  it('rewrites "Winner Group X" to the clinched winner in every match (so all views agree)', () => {
+    const clinch = { Mexico: 'won-group' }
+    expect(groupWinners(clinch)).toEqual({ A: 'Mexico' })
+
+    const resolved = resolveClinchedSlots(MATCHES, clinch)
+    // M79's first side was the "Winner Group A" placeholder — now the data
+    // itself says Mexico, so the bracket AND the detail modal show the same.
+    const m79 = resolved.find((m) => m.num === 79)
+    expect(m79.t1).toBe('Mexico')
+    // Unclinched slots untouched.
+    const m85 = resolved.find((m) => m.num === 85) // "Winner Group B"
+    expect(m85.t1).toBe('Winner Group B')
+    // No "Winner Group A" placeholder remains anywhere.
+    expect(resolved.some((m) => m.t1 === 'Winner Group A' || m.t2 === 'Winner Group A')).toBe(false)
+  })
+
+  it('returns the original array untouched when nothing is clinched', () => {
+    expect(resolveClinchedSlots(MATCHES, {})).toBe(MATCHES)
   })
 })
 

@@ -5,6 +5,13 @@ calendar day; bullet points capture every change made that day (features, fixes,
 data/source updates, deployment). Newest day on top.
 
 ## 2026-06-19
+- **Fix: clinched group winners now resolve everywhere, not just the bracket.**
+  A clinched "Winner Group X" slot was filled in the bracket's rendering only, so
+  clicking the match opened a detail modal that still showed the placeholder.
+  Resolution now happens once in the match data (`resolveClinchedSlots`), so the
+  resolved team flows to every view — bracket, match-detail modal, schedule
+  cards, week view, and calendar. Clinch tags stay limited to group-stage cards.
+  +2 tests (204 total).
 - **Fix: wrong group tie-breaker order (head-to-head vs goal difference).** The
   ranking used the pre-2026 order (overall goal difference before head-to-head),
   but FIFA changed it for 2026: head-to-head now comes FIRST (matching the UEFA
