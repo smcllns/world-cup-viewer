@@ -199,6 +199,39 @@ export function resolveClinchedSlots(matches, clinch) {
   })
 }
 
+// Teams whose clinch status newly changed between two sets of results — a new
+// clinch, an upgrade (e.g. top2 → won-group), or a new elimination. Used by the
+// autofill email to announce only what THIS batch of final scores settled
+// (compare the picture with the new results vs without them).
+export function newlyClinched(beforeMatches, afterMatches) {
+  const before = computeClinch(beforeMatches)
+  const after = computeClinch(afterMatches)
+  const changes = []
+  for (const g of GROUPS) {
+    for (const t of TEAMS[g]) {
+      const now = after[t.name]
+      if (now && now !== before[t.name]) changes.push({ team: t.name, group: g, status: now })
+    }
+  }
+  return changes
+}
+
+// One-line announcement for a clinch change, for the notification email.
+export function clinchHeadline({ team, group, status }) {
+  switch (status) {
+    case 'won-group':
+      return `🥇 ${team} have WON Group ${group}`
+    case 'top2':
+      return `✅ ${team} are THROUGH to the Round of 32 (top two of Group ${group})`
+    case 'third':
+      return `✅ ${team} are THROUGH as one of the eight best third-placed teams (Group ${group})`
+    case 'eliminated':
+      return `❌ ${team} are ELIMINATED from Group ${group}`
+    default:
+      return `${team} (Group ${group}): ${status}`
+  }
+}
+
 // Short label + tooltip for a status, for the UI. Returns null for null status.
 export function clinchBadge(status) {
   switch (status) {

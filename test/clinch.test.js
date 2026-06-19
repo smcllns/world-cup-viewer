@@ -1,7 +1,13 @@
 import { describe, it, expect } from 'vitest'
 import { MATCHES } from '../src/data/matches.js'
 import { TEAMS } from '../src/data/teams.js'
-import { computeClinch, resolveClinchedSlots, groupWinners } from '../src/utils/clinch.js'
+import {
+  computeClinch,
+  resolveClinchedSlots,
+  groupWinners,
+  newlyClinched,
+  clinchHeadline,
+} from '../src/utils/clinch.js'
 
 const GROUPS = Object.keys(TEAMS)
 
@@ -96,6 +102,25 @@ describe('resolveClinchedSlots — fill knockout placeholders in the data', () =
 
   it('returns the original array untouched when nothing is clinched', () => {
     expect(resolveClinchedSlots(MATCHES, {})).toBe(MATCHES)
+  })
+})
+
+describe('newlyClinched — announce what a result settled (for the email)', () => {
+  it('reports a team the latest result pushed over the line, with phrasing', () => {
+    // Group A with matchday 1–2 played EXCEPT m28; then m28 (Mexico beat South
+    // Korea) is the freshly-synced result that wins Mexico the group.
+    const before = withScores({ 1: [2, 0], 2: [2, 1], 25: [1, 1] })
+    const after = withScores({ 1: [2, 0], 2: [2, 1], 25: [1, 1], 28: [1, 0] })
+    const changes = newlyClinched(before, after)
+    expect(changes).toContainEqual({ team: 'Mexico', group: 'A', status: 'won-group' })
+    expect(clinchHeadline({ team: 'Mexico', group: 'A', status: 'won-group' })).toBe(
+      '🥇 Mexico have WON Group A',
+    )
+  })
+
+  it('does not repeat a clinch that was already true before the result', () => {
+    const settled = withScores({ 1: [2, 0], 2: [2, 1], 25: [1, 1], 28: [1, 0] })
+    expect(newlyClinched(settled, settled)).toEqual([])
   })
 })
 

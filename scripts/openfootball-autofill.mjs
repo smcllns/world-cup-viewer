@@ -44,6 +44,7 @@ import { fetchLive, applyLive, espnFinalScore, LIVE_SOURCE, scoreboardDates } fr
 import { fetchBackup, sdbFinalScore, sdbFinalPens } from '../src/services/thesportsdb.js'
 import { applyEdit, orientFt } from './cuptxt.mjs'
 import { classifyMatch, parseEspnEventDetail, eqFt } from './autofill-core.mjs'
+import { newlyClinched, clinchHeadline } from '../src/utils/clinch.js'
 
 const REPO = 'openfootball/worldcup'
 const DIR = '2026--usa'
@@ -105,13 +106,19 @@ function ghHeaders(token) {
 }
 
 async function main() {
-  // Test path (workflow_dispatch test_email=true): just prove the mail secrets work.
+  // Test path (workflow_dispatch test_email=true): prove the mail secrets work AND
+  // preview the clinch-announcement section, rendered by the real clinchHeadline.
   if (process.env.TEST_EMAIL === '1') {
+    const sample = [{ team: 'USA', group: 'D', status: 'top2' }]
     sendEmail(
-      '✅ Test — World Cup autofill email is working',
-      'This is a test from the OpenFootball autofill workflow. If you got this, the ' +
-        'mail secrets are configured and you’ll be emailed each time a new final score ' +
-        'is synced to openfootball/worldcup.',
+      '[TEST] ⚽ Synced 1 result to OpenFootball: USA 2-0 Australia · 1 clinch update',
+      'This is a TEST of the clinch-announcement email (no real sync happened) — it ' +
+        'shows the exact format you’ll get when a synced final score clinches a spot.\n\n' +
+        'New final score(s) synced to openfootball/worldcup:\n' +
+        '- USA 2-0 Australia\n\n' +
+        '🏆 Clinch updates from these results:\n' +
+        sample.map((c) => `- ${clinchHeadline(c)}`).join('\n') +
+        '\n\n2026--usa/cup.txt: (sample — no real commit)\n',
     )
     return
   }
@@ -231,7 +238,7 @@ async function main() {
     }
     file.text = res.text
     file.changed = true
-    applied.push({ ...res, conf, path: file.path })
+    applied.push({ ...res, conf, path: file.path, num: m.num })
     const srcNote = conf === 'espn-only' ? ' [ESPN only — TheSportsDB still lagging]' : ''
     console.log(`  ✓ ${res.label}${res.withDetail ? ' (+ detail)' : ' (score only)'}${pensNote}${srcNote}`)
   }
@@ -294,14 +301,28 @@ async function main() {
   }
   console.log()
 
+  // Did these freshly-synced finals clinch (or eliminate) anyone? Compare the
+  // clinch picture WITH this batch of results against WITHOUT it, and announce the
+  // delta — so the email also tells you what each result settled. `merged` already
+  // carries the new finals; the "before" view blanks them back out.
+  const appliedNums = new Set(applied.map((a) => a.num))
+  const beforeMatches = merged.map((m) => (appliedNums.has(m.num) ? { ...m, score: undefined } : m))
+  const clinches = newlyClinched(beforeMatches, merged)
+
   // Notify (only on an actual commit, so DRY runs / no-ops never email).
   const subject =
     `⚽ Synced ${applied.length} result${applied.length === 1 ? '' : 's'} to OpenFootball: ` +
-    applied.map((a) => a.label).join('; ')
-  const body =
+    applied.map((a) => a.label).join('; ') +
+    (clinches.length ? ` · ${clinches.length} clinch update${clinches.length === 1 ? '' : 's'}` : '')
+  let body =
     `New final score(s) synced to openfootball/worldcup:\n\n` +
-    applied.map((a) => `- ${a.label}${srcSuffix(a)}`).join('\n') +
-    `\n\n${commits.map((c) => `${c.path}: ${c.url}`).join('\n')}\n`
+    applied.map((a) => `- ${a.label}${srcSuffix(a)}`).join('\n')
+  if (clinches.length) {
+    body +=
+      `\n\n🏆 Clinch updates from these results:\n` +
+      clinches.map((c) => `- ${clinchHeadline(c)}`).join('\n')
+  }
+  body += `\n\n${commits.map((c) => `${c.path}: ${c.url}`).join('\n')}\n`
   sendEmail(subject, body)
 }
 

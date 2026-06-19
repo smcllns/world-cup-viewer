@@ -5,6 +5,13 @@ calendar day; bullet points capture every change made that day (features, fixes,
 data/source updates, deployment). Newest day on top.
 
 ## 2026-06-19
+- **Clinch announcements in the score-sync email.** When the OpenFootball
+  autofill syncs a final score, it now also reports any clinch/elimination that
+  result settles — comparing the clinch picture with vs without the new
+  result(s) and appending a "🏆 Clinch updates" section to the same email (all
+  events: won group / through / eliminated). Pure helpers `newlyClinched` and
+  `clinchHeadline` in `clinch.js`; the workflow's test-email path now previews
+  the format. +2 tests.
 - **Fix: clinched group winners now resolve everywhere, not just the bracket.**
   A clinched "Winner Group X" slot was filled in the bracket's rendering only, so
   clicking the match opened a detail modal that still showed the placeholder.
