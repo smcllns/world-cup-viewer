@@ -9,12 +9,31 @@ import { useFollow } from '../context/follow.jsx'
 import { useDetail } from '../context/detail.js'
 import LiveBadge from './LiveBadge.jsx'
 import ScoreCheck from './ScoreCheck.jsx'
+import { clinchBadge } from '../utils/clinch.js'
 
-function Team({ name, ko }) {
+// Tooltip describing which Round-of-32 slot this team feeds into, given its
+// group's slot map and any clinched status. Returns null when there's no slot
+// context (e.g. knockout placeholders).
+function slotTooltip(group, slot, clinch) {
+  if (!group || !slot) return null
+  const r32 = (num) => `Round of 32 · Match ${num}`
+  if (clinch === 'won-group') return `Clinched Group ${group} winner → ${r32(slot.win)}`
+  if (clinch === 'eliminated') return `Eliminated from Group ${group} — no knockout slot`
+  const parts = []
+  if (slot.win) parts.push(`1st → ${r32(slot.win)}`)
+  if (slot.runnerUp) parts.push(`2nd → ${r32(slot.runnerUp)}`)
+  parts.push('3rd → a best-third tie (if it qualifies)')
+  return `Group ${group} knockout route:\n${parts.join('\n')}`
+}
+
+function Team({ name, ko, clinch, group, slot }) {
   const flag = FLAG_BY_TEAM[name]
   const { isFollowed, toggle } = useFollow()
   const on = Boolean(flag) && isFollowed(name)
   const localKickoff = teamKickoffTooltip(ko, name)
+  const badge = clinchBadge(clinch)
+  // Bracket slot on the name; kickoff stays on the row (outside the name).
+  const nameTitle = slotTooltip(group, slot, clinch) || undefined
   return (
     <div className={`team${on ? ' followed' : ''}`} title={localKickoff || undefined}>
       {flag && (
@@ -29,7 +48,12 @@ function Team({ name, ko }) {
         </button>
       )}
       <span className="team-flag">{flag || '🏳️'}</span>
-      <span className={`team-name${flag ? '' : ' team-tbd'}`}>{name}</span>
+      <span className={`team-name${flag ? '' : ' team-tbd'}`} title={nameTitle}>{name}</span>
+      {badge && (
+        <span className={`clinch-tag ${badge.cls}`} title={badge.title}>
+          {badge.label} {badge.text}
+        </span>
+      )}
     </div>
   )
 }
@@ -59,7 +83,7 @@ function Channels({ feed }) {
   )
 }
 
-export default function MatchCard({ match, tz, feed = 'both', hidden = false }) {
+export default function MatchCard({ match, tz, feed = 'both', hidden = false, clinch, slotMap }) {
   const [showWatch, setShowWatch] = useState(false)
   const [revealScore, setRevealScore] = useState(false)
   const openDetail = useDetail()
@@ -102,7 +126,7 @@ export default function MatchCard({ match, tz, feed = 'both', hidden = false }) 
         </div>
 
         <div className="matchup">
-          <Team name={match.t1} ko={match.ko} />
+          <Team name={match.t1} ko={match.ko} clinch={clinch?.[match.t1]} group={match.group} slot={slotMap?.[match.group]} />
           {hasScore ? (
             scoreHidden ? (
               <button
@@ -124,7 +148,7 @@ export default function MatchCard({ match, tz, feed = 'both', hidden = false }) 
           ) : (
             <span className="vs">v</span>
           )}
-          <Team name={match.t2} ko={match.ko} />
+          <Team name={match.t2} ko={match.ko} clinch={clinch?.[match.t2]} group={match.group} slot={slotMap?.[match.group]} />
         </div>
 
         {/* Cross-source confirmation of the final score (OpenFootball / ESPN /

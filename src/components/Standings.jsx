@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { TEAMS } from '../data/teams.js'
 import { computeQualification, rowStatus } from '../utils/qualification.js'
+import { clinchBadge } from '../utils/clinch.js'
 import { useFollow } from '../context/follow.jsx'
 
 const GROUPS = Object.keys(TEAMS)
@@ -24,7 +25,7 @@ function Star({ name }) {
   )
 }
 
-function GroupTable({ group, rows, qual }) {
+function GroupTable({ group, rows, qual, clinch }) {
   const { isFollowed } = useFollow()
   const played = qual.completion[group] || rows.some((r) => r.P > 0)
   return (
@@ -40,6 +41,9 @@ function GroupTable({ group, rows, qual }) {
         </thead>
         <tbody>
           {rows.map((r) => {
+            // A guaranteed clinch/elimination verdict (if any) is more informative
+            // than the post-completion qualification badge, so it wins when present.
+            const clinched = clinchBadge(clinch?.[r.name])
             const status = rowStatus(r, group, qual)
             const badge = status && STATUS_BADGE[status]
             return (
@@ -49,7 +53,13 @@ function GroupTable({ group, rows, qual }) {
                   <Star name={r.name} />
                   <span className="team-flag">{r.flag}</span>
                   <span className={`row-team${isFollowed(r.name) ? ' followed' : ''}`}>{r.name}</span>
-                  {badge && <span className={`q-badge ${badge.cls}`} title={badge.title}>{badge.label}</span>}
+                  {clinched ? (
+                    <span className={`q-badge ${clinched.cls}`} title={clinched.title}>
+                      {clinched.label} {clinched.text}
+                    </span>
+                  ) : (
+                    badge && <span className={`q-badge ${badge.cls}`} title={badge.title}>{badge.label}</span>
+                  )}
                 </td>
                 <td>{r.P}</td><td>{r.W}</td><td>{r.D}</td><td>{r.L}</td>
                 <td>{r.GF}</td><td>{r.GA}</td>
@@ -104,7 +114,7 @@ function BestThirds({ qual }) {
   )
 }
 
-export default function Standings({ matches, hideScores }) {
+export default function Standings({ matches, hideScores, clinch }) {
   const [revealed, setRevealed] = useState(false)
 
   if (hideScores && !revealed) {
@@ -122,11 +132,14 @@ export default function Standings({ matches, hideScores }) {
     <>
       <p className="standings-legend">
         <span className="legend-swatch" /> Top two advance · <span className="q-badge q-best3">3⃣</span>{' '}
-        best-third spot · tie-breakers: points → goal difference → goals → head-to-head.
+        best-third spot · tie-breakers: points → goal difference → goals → head-to-head ·{' '}
+        <span className="q-badge c-won">🥇 Won group</span> /{' '}
+        <span className="q-badge c-in">✅ Through</span> /{' '}
+        <span className="q-badge c-out">❌ Out</span> mark mathematically clinched outcomes.
       </p>
       <div className="standings-grid">
         {GROUPS.map((g) => (
-          <GroupTable key={g} group={g} rows={qual.groups[g]} qual={qual} />
+          <GroupTable key={g} group={g} rows={qual.groups[g]} qual={qual} clinch={clinch} />
         ))}
       </div>
       <BestThirds qual={qual} />

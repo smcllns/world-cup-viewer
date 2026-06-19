@@ -1444,6 +1444,19 @@ select {
 .q-in { background: rgba(0, 194, 168, 0.18); color: var(--accent); }
 .q-best3 { background: rgba(244, 197, 66, 0.2); color: var(--gold); }
 .q-out { background: transparent; color: var(--text-faint); }
+/* Guaranteed clinch verdicts (also used as match-card tags). */
+.c-won { background: rgba(244, 197, 66, 0.22); color: var(--gold); }
+.c-in { background: rgba(0, 194, 168, 0.18); color: var(--accent); }
+.c-out { background: rgba(220, 80, 80, 0.16); color: #e06868; }
+.clinch-tag {
+  margin-left: 8px;
+  font-size: 0.6rem;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 5px;
+  white-space: nowrap;
+  vertical-align: middle;
+}
 .standings-table .eliminated { opacity: 0.55; }
 .thirds-card {
   background: var(--card);

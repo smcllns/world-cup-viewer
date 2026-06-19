@@ -5,6 +5,17 @@ calendar day; bullet points capture every change made that day (features, fixes,
 data/source updates, deployment). Newest day on top.
 
 ## 2026-06-18
+- **Clinch & elimination detection.** The site now works out what's
+  mathematically *locked* for each team — 🥇 won the group, ✅ through (top two,
+  or guaranteed as one of the 8 best third-placed teams), or ❌ eliminated — using
+  the full FIFA tie-breakers. It enumerates every possible outcome of a group's
+  remaining matches (with a goal cap well above any tie-breaker-relevant margin),
+  and judges the cross-group third-place race with sound per-group bounds. It is
+  built to never over-claim: when a situation is genuinely undecided (or too large
+  to enumerate early in the group stage), it stays silent rather than guess.
+  Verdicts show as badges in the Groups standings and as tags on Schedule match
+  cards; the Bracket now fills each "Winner Group X" slot with that team the
+  moment the group is clinched. New `src/utils/clinch.js`; +6 tests (196 total).
 - **"Hide past days" button on the Schedule.** Once group play piles up,
   reaching today's games meant a long scroll past every finished day — painful on
   a phone. A new control in the Schedule controls bar (shown only when past days

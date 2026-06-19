@@ -16,6 +16,8 @@ import { fetchResults, applyResults, RESULTS_SOURCE, openFootballFinalScore } fr
 import { fetchLive, applyLive, LIVE_SOURCE, espnFinalScore, historyDates } from './services/espn.js'
 import { fetchBackup, BACKUP_SOURCE, sdbFinalScore } from './services/thesportsdb.js'
 import { annotateScoreChecks } from './services/reconcile.js'
+import { computeClinch } from './utils/clinch.js'
+import { groupSlotMap } from './utils/bracket.js'
 import { detectGoals, goalNotification } from './services/goalNotify.js'
 import { useFollow } from './context/follow.jsx'
 import { DetailContext } from './context/detail.js'
@@ -185,6 +187,10 @@ export default function App() {
   }, [results, live, history, backup])
   const finishedCount = useMemo(() => matches.filter((m) => m.score).length, [matches])
   const liveCount = useMemo(() => matches.filter((m) => m.live).length, [matches])
+  // Guaranteed clinch/elimination status per team (see utils/clinch.js).
+  const clinch = useMemo(() => computeClinch(matches), [matches])
+  // Group → Round-of-32 slot each finishing position feeds into.
+  const slotMap = useMemo(() => groupSlotMap(MATCHES), [])
 
   // Auto-refresh: poll fast (30s) while a match is live so the score and clock
   // track ESPN closely, and slow (2 min) otherwise to go easy on the feeds.
@@ -525,7 +531,7 @@ export default function App() {
                   {!collapsed && (
                     <div className="day-matches">
                       {matches.map((m) => (
-                        <MatchCard key={m.num} match={m} tz={tz} feed={filters.feed} hidden={hidden} />
+                        <MatchCard key={m.num} match={m} tz={tz} feed={filters.feed} hidden={hidden} clinch={clinch} slotMap={slotMap} />
                       ))}
                     </div>
                   )}
@@ -538,13 +544,13 @@ export default function App() {
 
       {view === 'groups' && (
         <main className="groups-view">
-          <Standings matches={matches} hideScores={hideScores} />
+          <Standings matches={matches} hideScores={hideScores} clinch={clinch} />
         </main>
       )}
 
       {view === 'bracket' && (
         <main className="bracket-view">
-          <Bracket matches={matches} tz={tz} hideScores={hideScores} />
+          <Bracket matches={matches} tz={tz} hideScores={hideScores} clinch={clinch} />
         </main>
       )}
 

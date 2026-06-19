@@ -1,6 +1,12 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { render, screen, fireEvent, within } from '@testing-library/react'
 import App from '../src/App.jsx'
+import Standings from '../src/components/Standings.jsx'
+import Bracket from '../src/components/Bracket.jsx'
+import MatchCard from '../src/components/MatchCard.jsx'
+import { MATCHES } from '../src/data/matches.js'
+import { groupSlotMap } from '../src/utils/bracket.js'
+import { DetailContext } from '../src/context/detail.js'
 import { FollowProvider } from '../src/context/follow.jsx'
 
 // Mock the results feed so mount doesn't hit the network.
@@ -130,6 +136,67 @@ describe('App renders (smoke test)', () => {
     }
   })
 
+})
+
+describe('Standings clinch badges', () => {
+  it('renders the clinch verdict next to a team when provided', () => {
+    const clinch = { Mexico: 'won-group', Brazil: 'eliminated' }
+    render(
+      <FollowProvider>
+        <Standings matches={MATCHES} hideScores={false} clinch={clinch} />
+      </FollowProvider>,
+    )
+    // Badges render as "🥇 Won group" / "❌ Eliminated" (emoji + text in one
+    // node), and also appear in the legend — so match flexibly and expect ≥1.
+    expect(screen.getAllByText(/Won group/).length).toBeGreaterThan(0)
+    expect(screen.getAllByText(/Eliminated/).length).toBeGreaterThan(0)
+  })
+})
+
+describe('Schedule team-name slot tooltip', () => {
+  const groupMatch = MATCHES.find((m) => m.num === 28) // Mexico v South Korea (Group A)
+
+  function renderCard(clinch) {
+    return render(
+      <FollowProvider>
+        <DetailContext.Provider value={() => {}}>
+          <MatchCard match={groupMatch} tz="America/New_York" clinch={clinch} slotMap={groupSlotMap(MATCHES)} />
+        </DetailContext.Provider>
+      </FollowProvider>,
+    )
+  }
+
+  it('shows the conditional knockout route when undecided', () => {
+    renderCard({})
+    const title = screen.getByText('Mexico').getAttribute('title')
+    expect(title).toMatch(/Group A knockout route/)
+    expect(title).toMatch(/1st → Round of 32 · Match 79/)
+    expect(title).toMatch(/2nd → Round of 32 · Match 73/)
+  })
+
+  it('shows the definite slot once the group winner is clinched', () => {
+    renderCard({ Mexico: 'won-group' })
+    expect(screen.getByText('Mexico').getAttribute('title')).toBe(
+      'Clinched Group A winner → Round of 32 · Match 79',
+    )
+  })
+})
+
+describe('Bracket clinch resolution', () => {
+  it('fills a Winner Group slot with the clinched winner', () => {
+    render(
+      <FollowProvider>
+        <DetailContext.Provider value={() => {}}>
+          <Bracket matches={MATCHES} tz="America/New_York" hideScores={false} clinch={{ Mexico: 'won-group' }} />
+        </DetailContext.Provider>
+      </FollowProvider>,
+    )
+    // M79's first side was "Winner Group A" — now resolved to Mexico.
+    expect(screen.getByText('Mexico')).toBeInTheDocument()
+    expect(screen.queryByText('Winner Group A')).not.toBeInTheDocument()
+    // Other, unclinched winner slots remain placeholders.
+    expect(screen.getByText('Winner Group B')).toBeInTheDocument()
+  })
 })
 
 describe('Follow teams', () => {

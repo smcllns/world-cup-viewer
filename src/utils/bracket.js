@@ -26,3 +26,25 @@ export function matchesByNum(matches) {
     return acc
   }, {})
 }
+
+// Map each group letter to the Round-of-32 match its winner / runner-up feed
+// into, parsed from the R32 placeholder labels ("Winner Group A" etc.). Third-
+// place routes are intentionally omitted: a group's 3rd-placed team can land in
+// one of several ties depending on which third-placed teams advance.
+const WINNER_LABEL = /^Winner Group ([A-L])$/
+const RUNNERUP_LABEL = /^Runner-up Group ([A-L])$/
+
+export function groupSlotMap(matches) {
+  const map = {}
+  const slot = (g) => (map[g] ||= { win: null, runnerUp: null })
+  for (const m of matches) {
+    if (m.stage !== 'R32') continue
+    for (const side of [m.t1, m.t2]) {
+      let hit = WINNER_LABEL.exec(side)
+      if (hit) { slot(hit[1]).win = m.num; continue }
+      hit = RUNNERUP_LABEL.exec(side)
+      if (hit) slot(hit[1]).runnerUp = m.num
+    }
+  }
+  return map
+}
