@@ -71,6 +71,23 @@ describe('clinch — within a single group', () => {
     expect(computeClinch(live)['Mexico']).toBeNull()
   })
 
+  it('eliminates a team the head-to-head locks out of 3rd, even if it could tie on points', () => {
+    // Group C: Haiti lost to Scotland (head-to-head) and Brazil. Haiti can reach
+    // at most 3 points, but Scotland — who beat them — always finishes above
+    // (more points, or level with the H2H edge), and Brazil/Morocco are clear.
+    // So Haiti is locked into 4th → eliminated, even though on points alone they
+    // could draw level with Scotland.
+    const status = computeClinch(
+      withScores({
+        6: [1, 1], // Brazil 1–1 Morocco
+        7: [0, 1], // Haiti 0–1 Scotland (head-to-head to Scotland)
+        30: [0, 1], // Scotland 0–1 Morocco
+        31: [3, 0], // Brazil 3–0 Haiti
+      }),
+    )
+    expect(status['Haiti']).toBe('eliminated')
+  })
+
   it('does not claim a clinch while a rival can still overtake on points', () => {
     // Only matchday 1 played: far too open for anything to be locked.
     const status = computeClinch(

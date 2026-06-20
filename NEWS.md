@@ -5,6 +5,13 @@ calendar day; bullet points capture every change made that day (features, fixes,
 data/source updates, deployment). Newest day on top.
 
 ## 2026-06-19
+- **Fix: missed eliminations when head-to-head locks a team out (e.g. Haiti).**
+  The "can this team still reach 2nd/3rd?" check fell back to an optimistic
+  points bound even when the group was exactly enumerable, so a team that could
+  only *tie* on points but loses the head-to-head (so can't actually climb) was
+  never eliminated. It now trusts the exact ranks (which account for head-to-head
+  / goal difference) when the group is enumerable, using the points bound only as
+  a fallback for groups too large to enumerate. +1 regression test.
 - **Best third-placed table: drop the ✓ badge, keep the light-green row.** The
   qualifying eight already get the same light-green highlight as the group
   leaders; the extra ✓ looked too much like the "Through" clinch badge, so it's

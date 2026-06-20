@@ -203,8 +203,13 @@ export function computeClinch(matches) {
       }
 
       const guaranteedTop3 = (feasible && saMax <= 3) || pess <= 3
-      const canReachTop2 = (feasible && saMin <= 2) || opt <= 2
-      const canReach3rd = (feasible && saMin <= 3) || opt <= 3
+      // "Can still reach" must trust the EXACT ranks when the group is enumerable
+      // (they account for head-to-head / goal difference); the optimistic points
+      // bound is only a fallback for groups too large to enumerate. Using the
+      // points bound when exact data exists would over-state reachability and
+      // miss eliminations (e.g. a team the head-to-head locks out of 3rd).
+      const canReachTop2 = feasible ? saMin <= 2 : opt <= 2
+      const canReach3rd = feasible ? saMin <= 3 : opt <= 3
 
       // Through as a best third? Never finishes below 3rd, and even its WORST
       // third out-ranks all but ≤7 of the other groups' BEST possible thirds.
