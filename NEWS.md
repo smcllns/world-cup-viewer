@@ -5,6 +5,14 @@ calendar day; bullet points capture every change made that day (features, fixes,
 data/source updates, deployment). Newest day on top.
 
 ## 2026-06-19
+- **FIFA World Ranking now breaks otherwise-tied standings.** When teams are
+  level on points, head-to-head, goal difference, and goals scored, the app used
+  a placeholder alphabetical order — which wrongly put e.g. Cape Verde ahead of
+  Spain (both 1 pt, 0 GD, 0 GF, and a 0–0 head-to-head). It now applies FIFA
+  World Ranking as the decider (the official criterion after the uncomputable
+  conduct-score), so Spain (2nd) correctly ranks ahead of Cape Verde (67th), in
+  the group tables and the best-third race. New `src/data/fifaRanking.js` (June
+  11 2026 edition, sourced + dated like the kickoff fixture). +2 tests.
 - **Schedule-drift monitoring so a reschedule can't slip by again.** Our kickoff
   times were static (validated once), so nothing flagged FIFA moving M32 — it was
   only caught by eye. New `check:schedule` compares every upcoming match's stored

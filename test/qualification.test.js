@@ -2,6 +2,16 @@ import { describe, it, expect } from 'vitest'
 import { rankGroup, computeQualification } from '../src/utils/qualification.js'
 import { TEAMS } from '../src/data/teams.js'
 import { MATCHES } from '../src/data/matches.js'
+import { FIFA_RANK } from '../src/data/fifaRanking.js'
+
+describe('FIFA ranking data', () => {
+  it('covers all 48 teams with unique positions (so ties never fall to alphabetical)', () => {
+    const names = Object.values(TEAMS).flat().map((t) => t.name)
+    for (const n of names) expect(FIFA_RANK[n], `missing FIFA rank for ${n}`).toBeTypeOf('number')
+    const ranks = names.map((n) => FIFA_RANK[n])
+    expect(new Set(ranks).size).toBe(names.length) // no duplicate positions
+  })
+})
 
 // Build synthetic group-stage results for a group from a list of
 // [home, away, hg, ag] using that group's real fixtures.
@@ -107,6 +117,29 @@ describe('rankGroup — FIFA tie-breakers', () => {
     // So just assert Brazil first and ordering valid.
     expect(rows[0].name).toBe('Brazil')
     expect(rows.map((r) => r.rank)).toEqual([1, 2, 3, 4])
+  })
+
+  it('breaks a complete tie (incl. head-to-head) by FIFA ranking', () => {
+    // Group H: Spain and Cape Verde finish dead level — same points, GD, goals,
+    // AND they drew head-to-head — so it comes down to FIFA ranking, where Spain
+    // (2nd) is far above Cape Verde (67th). Real-tournament shape that had the
+    // old alphabetical fallback wrongly putting Cape Verde ahead.
+    const H = withGroupScores('H', [
+      ['Spain', 'Cape Verde', 0, 0], // head-to-head draw
+      ['Spain', 'Saudi Arabia', 1, 0],
+      ['Uruguay', 'Spain', 1, 0],
+      ['Uruguay', 'Cape Verde', 1, 0],
+      ['Cape Verde', 'Saudi Arabia', 1, 0],
+      ['Uruguay', 'Saudi Arabia', 1, 0],
+    ])
+    const rows = rankGroup('H', H)
+    const spain = rows.find((r) => r.name === 'Spain')
+    const cv = rows.find((r) => r.name === 'Cape Verde')
+    // Genuinely identical on every match-based criterion…
+    expect([spain.Pts, spain.GD, spain.GF]).toEqual([cv.Pts, cv.GD, cv.GF])
+    // …so FIFA ranking decides: Spain ahead of Cape Verde.
+    expect(spain.rank).toBeLessThan(cv.rank)
+    expect(rows.map((r) => r.name)).toEqual(['Uruguay', 'Spain', 'Cape Verde', 'Saudi Arabia'])
   })
 })
 

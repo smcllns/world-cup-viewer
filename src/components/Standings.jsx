@@ -83,7 +83,8 @@ function BestThirds({ qual }) {
       <h3 className="group-title">Best third-placed teams</h3>
       <p className="thirds-note">
         The 8 best of the 12 third-placed teams advance (ranked by points, then goal difference,
-        then goals scored). {qual.allComplete ? '' : 'Provisional — group stage still in progress.'}
+        then goals scored, then FIFA ranking).{' '}
+        {qual.allComplete ? '' : 'Provisional — group stage still in progress.'}
       </p>
       <table className="standings-table">
         <thead>
@@ -131,7 +132,7 @@ export default function Standings({ matches, hideScores, clinch }) {
     <>
       <p className="standings-legend">
         <span className="legend-swatch" /> Top two advance · <span className="q-badge q-best3">3⃣</span>{' '}
-        best-third spot · tie-breakers: points → head-to-head → goal difference → goals ·{' '}
+        best-third spot · tie-breakers: points → head-to-head → goal difference → goals → FIFA ranking ·{' '}
         <span className="q-badge c-won">🥇 Won group</span> /{' '}
         <span className="q-badge c-in">✅ Through</span> /{' '}
         <span className="q-badge c-out">❌ Out</span> mark mathematically clinched outcomes.

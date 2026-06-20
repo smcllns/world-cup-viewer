@@ -11,15 +11,17 @@
 //   If still equal, back to all group matches:
 //   5. Goal difference in all group matches
 //   6. Goals scored in all group matches
-//   7. Team conduct score, then 8. FIFA World Ranking — NOT computable here
-//      (no card / ranking data); we fall back to a deterministic alphabetical
-//      order and flag it.
+//   7. Team conduct score (cards) — NOT computed (no reliable disciplinary
+//      data), so we skip it — then 8. FIFA World Ranking, which we DO apply as
+//      the final decider (see data/fifaRanking.js). Alphabetical order is only
+//      the last-ditch fallback if a team isn't in the ranking table.
 //
 // Top two of each group advance; the eight best third-placed teams also advance
 // to the Round of 32. Third place is compared ACROSS groups, where head-to-head
-// can't apply (those teams never met), so it uses criteria 1 then 5–6.
+// can't apply (those teams never met), so it uses criteria 1 then 5–6 then 8.
 
 import { TEAMS } from '../data/teams.js'
+import { byFifaRank } from '../data/fifaRanking.js'
 
 const GROUPS = Object.keys(TEAMS)
 const GROUP_MATCH_COUNT = 6 // 4 teams => 6 matches per group
@@ -96,11 +98,11 @@ function resolveLevelOnPoints(tied, group, matches) {
       out.push(...resolveLevelOnPoints(cluster, group, matches))
     } else {
       // Still fully tied on head-to-head (no separation possible) — fall through
-      // to overall GD, overall goals, then a stable alphabetical order (conduct
-      // score / FIFA ranking aren't computable here).
+      // to overall GD, overall goals, then FIFA World Ranking (conduct score
+      // isn't computable here).
       out.push(
         ...[...cluster].sort(
-          (a, b) => b.GD - a.GD || b.GF - a.GF || a.name.localeCompare(b.name),
+          (a, b) => b.GD - a.GD || b.GF - a.GF || byFifaRank(a.name, b.name),
         ),
       )
     }
@@ -143,10 +145,11 @@ export function computeQualification(matches) {
     completion[g] = groupComplete(g, matches)
   }
 
-  // Third-placed teams ranked across groups by criteria 1–3 (no H2H across groups).
+  // Third-placed teams ranked across groups by criteria 1–3 then FIFA ranking
+  // (no head-to-head across groups, since those teams never met).
   const thirds = GROUPS.map((g) => groups[g][2]).filter(Boolean)
   thirds.sort(
-    (a, b) => b.Pts - a.Pts || b.GD - a.GD || b.GF - a.GF || a.name.localeCompare(b.name),
+    (a, b) => b.Pts - a.Pts || b.GD - a.GD || b.GF - a.GF || byFifaRank(a.name, b.name),
   )
 
   const allComplete = GROUPS.every((g) => completion[g])
