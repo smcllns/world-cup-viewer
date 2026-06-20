@@ -11,10 +11,11 @@
 //   If still equal, back to all group matches:
 //   5. Goal difference in all group matches
 //   6. Goals scored in all group matches
-//   7. Team conduct score (cards) — NOT computed (no reliable disciplinary
-//      data), so we skip it — then 8. FIFA World Ranking, which we DO apply as
-//      the final decider (see data/fifaRanking.js). Alphabetical order is only
-//      the last-ditch fallback if a team isn't in the ranking table.
+//   7. Team conduct score (cards) — computed BEST-EFFORT from ESPN's card feed
+//      (yellow -1, red -4; ESPN can't always distinguish a 2nd yellow from a
+//      direct red, and a card-less match scores 0, so treat it as approximate) —
+//      then 8. FIFA World Ranking as the final decider (see data/fifaRanking.js).
+//      Alphabetical order is only the last-ditch fallback for an unlisted team.
 //
 // Top two of each group advance; the eight best third-placed teams also advance
 // to the Round of 32. Third place is compared ACROSS groups, where head-to-head
@@ -27,7 +28,17 @@ const GROUPS = Object.keys(TEAMS)
 const GROUP_MATCH_COUNT = 6 // 4 teams => 6 matches per group
 
 function blank(team, group) {
-  return { ...team, group, P: 0, W: 0, D: 0, L: 0, GF: 0, GA: 0, GD: 0, Pts: 0 }
+  return { ...team, group, P: 0, W: 0, D: 0, L: 0, GF: 0, GA: 0, GD: 0, Pts: 0, conduct: 0 }
+}
+
+// Team conduct score (FIFA criterion: fewest disciplinary points). Best-effort
+// from ESPN's card feed, which flags yellow/red only — so we can't always tell a
+// second yellow (-3) from a direct red (-4); reds are scored -4. yellow = -1.
+// The score is 0 (no deduction) when a match carries no card data, so it should
+// be treated as an approximation, not gospel.
+function conductDelta(cards) {
+  if (!Array.isArray(cards)) return 0
+  return cards.reduce((s, c) => s + (c.color === 'red' ? -4 : -1), 0)
 }
 
 function baseStats(group, matches) {
@@ -42,6 +53,8 @@ function baseStats(group, matches) {
     a.P++; b.P++
     a.GF += g1; a.GA += g2
     b.GF += g2; b.GA += g1
+    a.conduct += conductDelta(m.cards?.t1)
+    b.conduct += conductDelta(m.cards?.t2)
     if (g1 > g2) { a.W++; b.L++; a.Pts += 3 }
     else if (g1 < g2) { b.W++; a.L++; b.Pts += 3 }
     else { a.D++; b.D++; a.Pts++; b.Pts++ }
@@ -98,11 +111,11 @@ function resolveLevelOnPoints(tied, group, matches) {
       out.push(...resolveLevelOnPoints(cluster, group, matches))
     } else {
       // Still fully tied on head-to-head (no separation possible) — fall through
-      // to overall GD, overall goals, then FIFA World Ranking (conduct score
-      // isn't computable here).
+      // to overall GD, overall goals, conduct score (cards, best-effort), then
+      // FIFA World Ranking.
       out.push(
         ...[...cluster].sort(
-          (a, b) => b.GD - a.GD || b.GF - a.GF || byFifaRank(a.name, b.name),
+          (a, b) => b.GD - a.GD || b.GF - a.GF || b.conduct - a.conduct || byFifaRank(a.name, b.name),
         ),
       )
     }
@@ -145,11 +158,12 @@ export function computeQualification(matches) {
     completion[g] = groupComplete(g, matches)
   }
 
-  // Third-placed teams ranked across groups by criteria 1–3 then FIFA ranking
-  // (no head-to-head across groups, since those teams never met).
+  // Third-placed teams ranked across groups by criteria 1–3, then conduct score
+  // (cards), then FIFA ranking (no head-to-head across groups — those teams
+  // never met).
   const thirds = GROUPS.map((g) => groups[g][2]).filter(Boolean)
   thirds.sort(
-    (a, b) => b.Pts - a.Pts || b.GD - a.GD || b.GF - a.GF || byFifaRank(a.name, b.name),
+    (a, b) => b.Pts - a.Pts || b.GD - a.GD || b.GF - a.GF || b.conduct - a.conduct || byFifaRank(a.name, b.name),
   )
 
   const allComplete = GROUPS.every((g) => completion[g])

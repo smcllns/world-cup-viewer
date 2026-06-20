@@ -1467,6 +1467,21 @@ select {
 }
 .thirds-note { font-size: 0.78rem; color: var(--text-dim); margin: 0 0 10px; line-height: 1.5; }
 
+.standings-toolbar { display: flex; justify-content: flex-end; margin: -6px 0 14px; }
+.ais-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--bg-soft);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  padding: 7px 13px;
+  border-radius: 9px;
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+.ais-toggle:hover { color: var(--text); border-color: var(--accent); }
+
 /* ---------- "As it stands" R32 projection (under each group) ---------- */
 .as-it-stands {
   margin-top: 10px;

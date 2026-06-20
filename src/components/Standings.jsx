@@ -127,7 +127,7 @@ function BestThirds({ qual }) {
       <h3 className="group-title">Best third-placed teams</h3>
       <p className="thirds-note">
         The 8 best of the 12 third-placed teams advance (ranked by points, then goal difference,
-        then goals scored, then FIFA ranking).{' '}
+        then goals scored, then fair play, then FIFA ranking).{' '}
         {qual.allComplete ? '' : 'Provisional — group stage still in progress.'}
       </p>
       <table className="standings-table">
@@ -160,6 +160,25 @@ function BestThirds({ qual }) {
 
 export default function Standings({ matches, hideScores, clinch }) {
   const [revealed, setRevealed] = useState(false)
+  // "As it stands" R32 projection is shown by default; this toggle (persisted)
+  // hides it for those who just want the tables.
+  const [showProjection, setShowProjection] = useState(() => {
+    try {
+      return localStorage.getItem('wc2026:asItStands') !== '0'
+    } catch {
+      return true
+    }
+  })
+  const toggleProjection = () =>
+    setShowProjection((v) => {
+      const next = !v
+      try {
+        localStorage.setItem('wc2026:asItStands', next ? '1' : '0')
+      } catch {
+        /* ignore */
+      }
+      return next
+    })
 
   if (hideScores && !revealed) {
     return (
@@ -177,14 +196,31 @@ export default function Standings({ matches, hideScores, clinch }) {
     <>
       <p className="standings-legend">
         <span className="legend-swatch" /> Top two advance · <span className="q-badge q-best3">3⃣</span>{' '}
-        best-third spot · tie-breakers: points → head-to-head → goal difference → goals → FIFA ranking ·{' '}
+        best-third spot · tie-breakers: points → head-to-head → goal difference → goals → fair play (cards) → FIFA ranking ·{' '}
         <span className="q-badge c-won">🥇 Won group</span> /{' '}
         <span className="q-badge c-in">✅ Through</span> /{' '}
         <span className="q-badge c-out">❌ Out</span> mark mathematically clinched outcomes.
       </p>
+      <div className="standings-toolbar">
+        <button
+          className="ais-toggle"
+          onClick={toggleProjection}
+          aria-pressed={showProjection}
+          title="Show or hide the projected Round-of-32 matchups under each group"
+        >
+          {showProjection ? '▾ Hide “As it stands”' : '▸ Show “As it stands”'}
+        </button>
+      </div>
       <div className="standings-grid">
         {GROUPS.map((g) => (
-          <GroupTable key={g} group={g} rows={qual.groups[g]} qual={qual} clinch={clinch} asItStands={perGroup[g]} />
+          <GroupTable
+            key={g}
+            group={g}
+            rows={qual.groups[g]}
+            qual={qual}
+            clinch={clinch}
+            asItStands={showProjection ? perGroup[g] : null}
+          />
         ))}
       </div>
       <BestThirds qual={qual} />

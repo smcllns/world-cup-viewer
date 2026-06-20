@@ -179,6 +179,35 @@ describe('rankGroup — FIFA tie-breakers', () => {
     expect(rows[0].name).toBe('Scotland')
   })
 
+  it('breaks a dead-even tie by conduct score (cards) BEFORE FIFA ranking', () => {
+    // Spain & Cape Verde tie on points / GD / goals and drew head-to-head, but
+    // Spain picked up more yellows — so on fair play Cape Verde ranks higher,
+    // overriding FIFA ranking (which would put Spain first). Mirrors the BBC case.
+    const base = withGroupScores('H', [
+      ['Spain', 'Cape Verde', 0, 0],
+      ['Spain', 'Saudi Arabia', 1, 0],
+      ['Uruguay', 'Spain', 1, 0],
+      ['Uruguay', 'Cape Verde', 1, 0],
+      ['Cape Verde', 'Saudi Arabia', 1, 0],
+      ['Uruguay', 'Saudi Arabia', 1, 0],
+    ])
+    // Attach cards: Spain 2 yellows, Cape Verde 0, on their head-to-head match.
+    const withCards = base.map((m) =>
+      m.t1 === 'Spain' && m.t2 === 'Cape Verde'
+        ? { ...m, cards: { t1: [{ color: 'yellow' }, { color: 'yellow' }], t2: [] } }
+        : m,
+    )
+    const rows = rankGroup('H', withCards)
+    const spain = rows.find((r) => r.name === 'Spain')
+    const cv = rows.find((r) => r.name === 'Cape Verde')
+    expect([spain.Pts, spain.GD, spain.GF]).toEqual([cv.Pts, cv.GD, cv.GF]) // still level on goals
+    expect(cv.rank).toBeLessThan(spain.rank) // fair play puts Cape Verde ahead
+    // sanity: without the cards it's the other way (FIFA ranking → Spain first)
+    expect(rankGroup('H', base).find((r) => r.name === 'Spain').rank).toBeLessThan(
+      rankGroup('H', base).find((r) => r.name === 'Cape Verde').rank,
+    )
+  })
+
   it('with no results, ranks all four teams 1–4 by FIFA ranking', () => {
     const rows = rankGroup('C', []) // Brazil(6) < Morocco(7) < Scotland(42) < Haiti(83)
     expect(rows.map((r) => r.name)).toEqual(['Brazil', 'Morocco', 'Scotland', 'Haiti'])

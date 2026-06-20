@@ -5,6 +5,20 @@ calendar day; bullet points capture every change made that day (features, fixes,
 data/source updates, deployment). Newest day on top.
 
 ## 2026-06-20
+- **Fair-play (conduct) tie-breaker added — standings now match BBC.** When teams
+  are level on points, head-to-head, goal difference and goals, FIFA's next
+  criterion is the team conduct score (cards), *before* FIFA ranking. We now
+  compute it best-effort from ESPN's card feed (yellow −1, red −4; available with
+  the history backfill for ~28/32 finished group matches). This fixed six "As it
+  stands" matchups that differed from the BBC — e.g. dead-even draws like
+  Netherlands 2–2 Japan and Iran 2–2 New Zealand now order by cards (then FIFA
+  ranking), and all the projected Round-of-32 ties match the BBC. Caveat: ESPN
+  flags yellow/red only (can't always tell a 2nd yellow from a direct red) and a
+  card-less match scores 0, so it's an approximation, with FIFA ranking as the
+  final fallback. +1 test.
+- **"As it stands" can be hidden.** It's shown by default under each group; a
+  toggle near the top of the Groups view hides it (preference persisted) for
+  those who just want the tables.
 - **Schedule-drift check is now FIFA-anchored & multi-source.** Instead of
   trusting ESPN alone (or making you the tiebreaker), `check:schedule` now pulls
   four free/keyless feeds — **FIFA's official data API as the authority**, plus
