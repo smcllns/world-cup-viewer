@@ -24,6 +24,9 @@ city/stadium, a bracket, group standings, and live results.
   Fires while the app is open in a tab (no backend, so no background push).
 - **Four views** — chronological schedule, a Sunday–Saturday week calendar,
   group standings, and the knockout bracket.
+- **Phone-friendly schedule** — past days collapse to tappable headers by default
+  (or hide entirely), so the schedule opens on today's games instead of a long
+  scroll.
 - **Match detail** — click any match for full venue/time/broadcast info, the live
   status/clock, and a minute-by-minute event timeline (goals ⚽, cards 🟨🟥)
   once a match is underway.
@@ -32,8 +35,22 @@ city/stadium, a bracket, group standings, and live results.
 - **Venues** — all 16 host stadiums with city, country, and region.
 - **Filtering** — search, stage, group, team, host country, region,
   city/stadium, timeframe, and broadcast language.
-- **Group standings & qualification** — all 12 tables with official tie-breakers,
-  who advances, and the 8 best third-placed teams.
+- **Group standings & qualification** — all 12 tables with the official 2026
+  tie-breakers (points → head-to-head → goal difference → goals → fair play
+  [team conduct / cards] → FIFA World Ranking), who advances, and the 8 best
+  third-placed teams.
+- **Clinch & elimination detection** — teams are marked 🥇 Won group / ✅ Through /
+  ❌ Out the moment the outcome is mathematically guaranteed (an exact
+  scoreline-enumeration engine with a sound points-bound fallback, accounting for
+  head-to-head and the cross-group third-place race). Shown in the group tables and
+  schedule cards, and resolved into the bracket (a clinched "Winner Group X" slot
+  fills in everywhere). Clinches are also announced in the score-sync email.
+- **"As it stands" Round of 32** — under each group, where its current 1st / 2nd /
+  (qualifying) 3rd would land in the knockout, with concrete opponents — like the
+  BBC's group pages. The eight qualifying thirds are placed using **FIFA's official
+  Annexe C allocation** (all 495 combinations, parsed from the regulations PDF).
+  Each projected match number links straight to that tie on the bracket, and the
+  whole block can be toggled off.
 - **Bracket** — two-sided knockout bracket that fills in as teams resolve.
 - **Add to calendar** — per-match `.ics` download, plus a `webcal://`
   subscription feed (all matches or just your teams) that auto-updates.
@@ -76,6 +93,15 @@ simultaneous final-matchday kickoffs, no team double-booked, valid bracket
 references). Sources: the [Wikipedia knockout-stage table](https://en.wikipedia.org/wiki/2026_FIFA_World_Cup_knockout_stage)
 (kickoffs + bracket), Yahoo Sports & MLSsoccer (group times/venues), and NBC
 Sports (group draw).
+
+**Reschedule monitoring.** Because stored kickoffs are static, they're also
+re-validated continuously against **FIFA's official data API** (the authority),
+with ESPN, TheSportsDB and OpenFootball as corroboration — every group match,
+matched by team pair. It runs hourly as a red-build backstop and each morning
+(05:00 MST, before kickoff) as an emailed report. If FIFA's time no longer matches
+ours, the daily check rewrites both `src/data/matches.js` and the kickoff fixture
+to FIFA's time and opens a ready-to-merge PR, so a reschedule (like M32 moving an
+hour earlier) can't slip by unnoticed. See `npm run check:schedule`.
 
 ## Data sources
 

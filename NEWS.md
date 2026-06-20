@@ -5,6 +5,14 @@ calendar day; bullet points capture every change made that day (features, fixes,
 data/source updates, deployment). Newest day on top.
 
 ## 2026-06-20
+- **"As it stands" match numbers link to the bracket.** Each projected R32 match
+  number (e.g. M79) is now a link — clicking it switches to the Bracket tab,
+  scrolls that tie into view, and flashes a highlight.
+- **README refreshed.** Documented the big features that had landed but weren't
+  written up: clinch/elimination detection, the "As it stands" Round-of-32
+  projection (official FIFA Annexe C, bracket-linked), the 2026 tie-breakers incl.
+  fair play, phone-friendly collapsing schedule, and FIFA-anchored reschedule
+  monitoring with auto-fix PRs.
 - **Groups tab polish.** The "As it stands" block now pins to the bottom of each
   group card, so the blocks line up across a row even when a clinch badge (e.g.
   Group D's "Won group" / "Eliminated") makes one table taller. The legend's

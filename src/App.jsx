@@ -95,6 +95,13 @@ export default function App() {
   const [calendarOpen, setCalendarOpen] = useState(false)
 
   const [view, setView] = useState(initial.view)
+  // A match number to focus in the bracket (set when an "As it stands" link is
+  // clicked); the Bracket scrolls to and highlights it, then clears this.
+  const [focusMatch, setFocusMatch] = useState(null)
+  const goToBracketMatch = (num) => {
+    setFocusMatch(num)
+    setView('bracket')
+  }
   const [tz, setTz] = useState(initial.tz)
   const [filters, setFilters] = useState(initial.filters)
   const [hideScores, setHideScores] = useState(initial.hideScores)
@@ -548,13 +555,19 @@ export default function App() {
 
       {view === 'groups' && (
         <main className="groups-view">
-          <Standings matches={matches} hideScores={hideScores} clinch={clinch} />
+          <Standings matches={matches} hideScores={hideScores} clinch={clinch} onGoToMatch={goToBracketMatch} />
         </main>
       )}
 
       {view === 'bracket' && (
         <main className="bracket-view">
-          <Bracket matches={displayMatches} tz={tz} hideScores={hideScores} />
+          <Bracket
+            matches={displayMatches}
+            tz={tz}
+            hideScores={hideScores}
+            focusMatch={focusMatch}
+            onFocusHandled={() => setFocusMatch(null)}
+          />
         </main>
       )}
 

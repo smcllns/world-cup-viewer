@@ -29,7 +29,7 @@ function Star({ name }) {
 
 // "As it stands" projection of where this group's current placings would land in
 // the Round of 32. A provisional snapshot — opponents shift as other groups play.
-function AsItStands({ proj }) {
+function AsItStands({ proj, onGoToMatch }) {
   if (!proj) return null
   const dest = (label, d, qualifies = true) => {
     if (!qualifies) return null
@@ -44,7 +44,19 @@ function AsItStands({ proj }) {
         <span className="ais-opp">
           {opp ? `${FLAG_BY_TEAM[opp] || ''} ${opp}` : 'TBD'}
         </span>
-        {d?.matchNum && <span className="ais-match">M{d.matchNum}</span>}
+        {d?.matchNum &&
+          (onGoToMatch ? (
+            <button
+              type="button"
+              className="ais-match ais-match-link"
+              onClick={() => onGoToMatch(d.matchNum)}
+              title={`Show Match ${d.matchNum} on the Bracket`}
+            >
+              M{d.matchNum}
+            </button>
+          ) : (
+            <span className="ais-match">M{d.matchNum}</span>
+          ))}
       </li>
     )
   }
@@ -68,7 +80,7 @@ function AsItStands({ proj }) {
   )
 }
 
-function GroupTable({ group, rows, qual, clinch, asItStands }) {
+function GroupTable({ group, rows, qual, clinch, asItStands, onGoToMatch }) {
   const { isFollowed } = useFollow()
   const played = qual.completion[group] || rows.some((r) => r.P > 0)
   return (
@@ -114,7 +126,7 @@ function GroupTable({ group, rows, qual, clinch, asItStands }) {
         </tbody>
       </table>
       {!played && <p className="group-note">No matches played yet</p>}
-      {played && <AsItStands proj={asItStands} />}
+      {played && <AsItStands proj={asItStands} onGoToMatch={onGoToMatch} />}
     </div>
   )
 }
@@ -158,7 +170,7 @@ function BestThirds({ qual }) {
   )
 }
 
-export default function Standings({ matches, hideScores, clinch }) {
+export default function Standings({ matches, hideScores, clinch, onGoToMatch }) {
   const [revealed, setRevealed] = useState(false)
   // "As it stands" R32 projection is shown by default; this toggle (persisted)
   // hides it for those who just want the tables.
@@ -229,6 +241,7 @@ export default function Standings({ matches, hideScores, clinch }) {
             qual={qual}
             clinch={clinch}
             asItStands={showProjection ? perGroup[g] : null}
+            onGoToMatch={onGoToMatch}
           />
         ))}
       </div>

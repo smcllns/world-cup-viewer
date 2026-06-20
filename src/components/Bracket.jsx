@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { STAGE_LABELS } from '../data/matches.js'
 import { VENUES } from '../data/venues.js'
 import { FLAG_BY_TEAM } from '../data/teams.js'
@@ -34,7 +35,7 @@ function BracketMatch({ num, byNum, tz, hideScores }) {
   })
   const showScore = m.score && !hideScores
   return (
-    <div className="bx-match" role="button" tabIndex={0}
+    <div className="bx-match" id={`bx-m${m.num}`} role="button" tabIndex={0}
       aria-label={`${m.t1} versus ${m.t2}, ${STAGE_LABELS[m.stage]}, Match ${m.num}`}
       onClick={() => openDetail(m)}
       onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && openDetail(m)}>
@@ -76,9 +77,23 @@ function Column({ title, nums, byNum, tz, hideScores }) {
   )
 }
 
-export default function Bracket({ matches, tz, hideScores }) {
+export default function Bracket({ matches, tz, hideScores, focusMatch, onFocusHandled }) {
   const byNum = matchesByNum(matches)
   const common = { byNum, tz, hideScores }
+
+  // When arriving from an "As it stands" link, scroll the target match into
+  // view (the bracket scrolls horizontally) and flash a highlight, then clear.
+  useEffect(() => {
+    if (focusMatch == null) return
+    const el = document.getElementById(`bx-m${focusMatch}`)
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'center' })
+      el.classList.add('bx-focus')
+      setTimeout(() => el.classList.remove('bx-focus'), 2200)
+    }
+    onFocusHandled?.()
+  }, [focusMatch, onFocusHandled])
+
   return (
     <div className="bracket-wrap">
       <p className="bracket-hint">Scroll horizontally to follow the path to the Final →</p>
