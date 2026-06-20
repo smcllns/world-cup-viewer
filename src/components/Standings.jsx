@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { TEAMS } from '../data/teams.js'
 import { computeQualification, rowStatus } from '../utils/qualification.js'
 import { clinchBadge } from '../utils/clinch.js'
+import { projectKnockout } from '../utils/asItStands.js'
+import { FLAG_BY_TEAM } from '../data/teams.js'
 import { useFollow } from '../context/follow.jsx'
 
 const GROUPS = Object.keys(TEAMS)
@@ -25,7 +27,48 @@ function Star({ name }) {
   )
 }
 
-function GroupTable({ group, rows, qual, clinch }) {
+// "As it stands" projection of where this group's current placings would land in
+// the Round of 32. A provisional snapshot — opponents shift as other groups play.
+function AsItStands({ proj }) {
+  if (!proj) return null
+  const dest = (label, d, qualifies = true) => {
+    if (!qualifies) return null
+    const team = d?.team
+    const opp = d?.opponent
+    if (!team) return null
+    return (
+      <li className="ais-row" key={label}>
+        <span className="ais-pos">{label}</span>
+        <span className="ais-team">{FLAG_BY_TEAM[team] || ''} {team}</span>
+        <span className="ais-vs">vs</span>
+        <span className="ais-opp">
+          {opp ? `${FLAG_BY_TEAM[opp] || ''} ${opp}` : 'TBD'}
+        </span>
+        {d?.matchNum && <span className="ais-match">M{d.matchNum}</span>}
+      </li>
+    )
+  }
+  return (
+    <div className="as-it-stands">
+      <div className="ais-title">As it stands → Round of 32</div>
+      <ul className="ais-list">
+        {dest('1st', proj.first)}
+        {dest('2nd', proj.second)}
+        {proj.thirdQualifies
+          ? dest('3rd', proj.third)
+          : proj.thirdTeam && (
+              <li className="ais-row ais-out" key="3rd-out">
+                <span className="ais-pos">3rd</span>
+                <span className="ais-team">{FLAG_BY_TEAM[proj.thirdTeam] || ''} {proj.thirdTeam}</span>
+                <span className="ais-note">outside the best 8</span>
+              </li>
+            )}
+      </ul>
+    </div>
+  )
+}
+
+function GroupTable({ group, rows, qual, clinch, asItStands }) {
   const { isFollowed } = useFollow()
   const played = qual.completion[group] || rows.some((r) => r.P > 0)
   return (
@@ -71,6 +114,7 @@ function GroupTable({ group, rows, qual, clinch }) {
         </tbody>
       </table>
       {!played && <p className="group-note">No matches played yet</p>}
+      {played && <AsItStands proj={asItStands} />}
     </div>
   )
 }
@@ -127,6 +171,7 @@ export default function Standings({ matches, hideScores, clinch }) {
   }
 
   const qual = computeQualification(matches)
+  const { perGroup } = projectKnockout(matches)
 
   return (
     <>
@@ -139,7 +184,7 @@ export default function Standings({ matches, hideScores, clinch }) {
       </p>
       <div className="standings-grid">
         {GROUPS.map((g) => (
-          <GroupTable key={g} group={g} rows={qual.groups[g]} qual={qual} clinch={clinch} />
+          <GroupTable key={g} group={g} rows={qual.groups[g]} qual={qual} clinch={clinch} asItStands={perGroup[g]} />
         ))}
       </div>
       <BestThirds qual={qual} />

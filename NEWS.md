@@ -29,6 +29,16 @@ data/source updates, deployment). Newest day on top.
   round-trip tests; and a schedule-drift threshold-boundary test. 236 tests total.
 
 ## 2026-06-19
+- **"As it stands" Round-of-32 projection under each group.** Each group table
+  now shows where its current 1st / 2nd / (qualifying) 3rd would land in the
+  Round of 32 — with concrete opponents — based on the live standings, like the
+  BBC's group pages. Winner/runner-up slots resolve directly from the table; the
+  eight qualifying thirds are placed using **FIFA's official Annexe C allocation**
+  — all 495 combinations, parsed verbatim from the Regulations PDF and validated
+  against the Art. 12.6 candidate lists (`src/data/thirdPlaceCombinations.js`).
+  (Early in the group stage, before eight thirds have data, it falls back to
+  constraint-matching the candidate lists.) New `src/utils/asItStands.js`;
+  +7 tests.
 - **FIFA World Ranking now breaks otherwise-tied standings.** When teams are
   level on points, head-to-head, goal difference, and goals scored, the app used
   a placeholder alphabetical order — which wrongly put e.g. Cape Verde ahead of

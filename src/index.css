@@ -1466,3 +1466,37 @@ select {
   margin-top: 16px;
 }
 .thirds-note { font-size: 0.78rem; color: var(--text-dim); margin: 0 0 10px; line-height: 1.5; }
+
+/* ---------- "As it stands" R32 projection (under each group) ---------- */
+.as-it-stands {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--border);
+}
+.ais-title {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--text-faint);
+  margin-bottom: 6px;
+}
+.ais-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.ais-row {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 0.8rem;
+  flex-wrap: wrap;
+}
+.ais-pos {
+  font-weight: 700;
+  color: var(--text-faint);
+  min-width: 24px;
+}
+.ais-team { font-weight: 600; }
+.ais-vs { color: var(--text-faint); font-size: 0.72rem; }
+.ais-opp { color: var(--text-dim); }
+.ais-match { color: var(--text-faint); font-size: 0.68rem; margin-left: auto; }
+.ais-out { opacity: 0.6; }
+.ais-out .ais-note { color: var(--text-faint); font-size: 0.72rem; font-style: italic; }
