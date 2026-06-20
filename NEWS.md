@@ -5,6 +5,12 @@ calendar day; bullet points capture every change made that day (features, fixes,
 data/source updates, deployment). Newest day on top.
 
 ## 2026-06-20
+- **Groups tab polish.** The "As it stands" block now pins to the bottom of each
+  group card, so the blocks line up across a row even when a clinch badge (e.g.
+  Group D's "Won group" / "Eliminated") makes one table taller. And the legend's
+  tie-breaker list — clunky on a phone — moved to hover text on a compact
+  "tie-breakers" label (full order: points → head-to-head → goal difference →
+  goals → fair play → FIFA ranking).
 - **Fair-play (conduct) tie-breaker added — standings now match BBC.** When teams
   are level on points, head-to-head, goal difference and goals, FIFA's next
   criterion is the team conduct score (cards), *before* FIFA ranking. We now

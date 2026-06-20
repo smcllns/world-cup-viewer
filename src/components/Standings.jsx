@@ -196,8 +196,14 @@ export default function Standings({ matches, hideScores, clinch }) {
     <>
       <p className="standings-legend">
         <span className="legend-swatch" /> Top two advance · <span className="q-badge q-best3">3⃣</span>{' '}
-        best-third spot · tie-breakers: points → head-to-head → goal difference → goals → fair play (cards) → FIFA ranking ·{' '}
-        <span className="q-badge c-won">🥇 Won group</span> /{' '}
+        best-third spot ·{' '}
+        <span
+          className="legend-tb"
+          title="Tie-breakers: points → head-to-head → goal difference → goals → fair play (cards) → FIFA ranking"
+        >
+          tie-breakers
+        </span>{' '}
+        · <span className="q-badge c-won">🥇 Won group</span> /{' '}
         <span className="q-badge c-in">✅ Through</span> /{' '}
         <span className="q-badge c-out">❌ Out</span> mark mathematically clinched outcomes.
       </p>

@@ -822,6 +822,11 @@ select {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 14px 16px;
+  /* Flex column so the "As it stands" block can pin to the bottom — keeping it
+     at the same vertical position across a row even when a clinch badge makes
+     one group's table taller (the grid already stretches cards to equal height). */
+  display: flex;
+  flex-direction: column;
 }
 .group-title {
   margin: 0 0 10px;
@@ -1467,6 +1472,8 @@ select {
 }
 .thirds-note { font-size: 0.78rem; color: var(--text-dim); margin: 0 0 10px; line-height: 1.5; }
 
+.legend-tb { text-decoration: underline dotted; text-underline-offset: 2px; cursor: help; }
+
 .standings-toolbar { display: flex; justify-content: flex-end; margin: -6px 0 14px; }
 .ais-toggle {
   display: inline-flex;
@@ -1484,7 +1491,7 @@ select {
 
 /* ---------- "As it stands" R32 projection (under each group) ---------- */
 .as-it-stands {
-  margin-top: 10px;
+  margin-top: auto; /* pin to the bottom of the (equal-height) card → row-aligned */
   padding-top: 8px;
   border-top: 1px dashed var(--border);
 }
