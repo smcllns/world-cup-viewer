@@ -41,7 +41,7 @@ export const OFFICIAL_ET = {
   29: '2026-06-19 15:00',
   30: '2026-06-19 18:00',
   31: '2026-06-19 20:30',
-  32: '2026-06-19 23:00', // moved 1h earlier; corrected 2026-06-20 vs ESPN (kicked off 03:00 UTC)
+  32: '2026-06-19 23:00', // corrected 2026-06-20 to ESPN/FIFA/Levi's (03:00 UTC); was 00:00 ET, cause of discrepancy undetermined
   33: '2026-06-20 13:00',
   34: '2026-06-20 16:00',
   35: '2026-06-20 20:00',

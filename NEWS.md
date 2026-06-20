@@ -5,11 +5,15 @@ calendar day; bullet points capture every change made that day (features, fixes,
 data/source updates, deployment). Newest day on top.
 
 ## 2026-06-19
-- **Schedule fix: M32 (Türkiye v Paraguay) kickoff was 1 hour late.** FIFA moved
-  it earlier; the match actually kicked off at 23:00 ET (June 19) but the app had
-  00:00 ET (June 20), so it showed as upcoming while already in progress. Verified
-  against ESPN (live at 03:00 UTC) and confirmed it's the only match off by ≥5 min.
-  Corrected in `src/data/matches.js` and the official-kickoffs fixture.
+- **Schedule fix: M32 (Türkiye v Paraguay) kickoff was off by 1 hour.** The app
+  had 00:00 ET (June 20) but the actual kickoff is 23:00 ET (June 19), so it
+  showed as upcoming while already in progress. Confirmed against ESPN (live at
+  03:00 UTC), FIFA, and the Levi's Stadium event page; a full sweep confirms it's
+  the only match off by ≥5 min. Cause of the original discrepancy is undetermined
+  — our value was 00:00 ET from initial release and survived the 2026-06-09
+  audit, but no reschedule announcement could be found and the early-June source
+  listings couldn't be re-checked (web archives unreachable). Corrected in
+  `src/data/matches.js` and the official-kickoffs fixture.
 - **Fix: missed eliminations when head-to-head locks a team out (e.g. Haiti).**
   The "can this team still reach 2nd/3rd?" check fell back to an optimistic
   points bound even when the group was exactly enumerable, so a team that could
