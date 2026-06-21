@@ -20,26 +20,6 @@ jobs:
       - run: npm test
       - run: npm run build
 
-  deploy:
-    name: Deploy to Netlify
-    needs: test # only deploys if tests + build pass
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-node@v6
-        with:
-          node-version: 22
-          cache: npm
-      - run: npm ci
-      - run: npm run coverage:badge # writes public/coverage.json for the README badge
-      - run: npm run build
-      - name: Deploy to Netlify
-        run: npx netlify-cli@26 deploy --dir dist --functions netlify/functions --prod --message "CI deploy ${{ github.sha }}"
-        env:
-          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
-          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
-
   pages:
     name: Deploy to GitHub Pages
     needs: test # only deploys if tests + build pass
