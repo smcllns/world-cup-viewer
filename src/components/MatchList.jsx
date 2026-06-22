@@ -114,6 +114,33 @@ export default function MatchList({ matches, tz, hideScores, setHideScores = () 
             Played
           </button>
         </div>
+
+        {/* Country filter sits with the tabs (both are "which matches?" filters);
+            on a phone it wraps to its own left-aligned row below them. */}
+        <div className="ml-filter">
+          <button
+            type="button"
+            className={`ml-country${country ? ' active' : ''}`}
+            onClick={() => setPickerOpen(true)}
+            aria-haspopup="dialog"
+            aria-label={country ? `Filtering by ${country}. Change country` : 'Filter by country'}
+          >
+            <span className="ml-country-flag">{country ? FLAG_BY_TEAM[country] || '•' : '🌐'}</span>
+            <span className="ml-country-name">{country || 'All Countries'}</span>
+            <span className="ml-country-caret" aria-hidden="true">▾</span>
+          </button>
+          {country && (
+            <button
+              type="button"
+              className="ml-country-clear"
+              onClick={() => setCountry(null)}
+              aria-label="Clear country filter, show all countries"
+            >
+              ✕
+            </button>
+          )}
+        </div>
+
         {/* Global spoiler toggle. Scores also appear in the knockout bracket, so
             this governs there too — it just lives where scores are most visible. */}
         <label className="scores-toggle" title="Toggle spoiler-free mode for all scores">
@@ -127,32 +154,6 @@ export default function MatchList({ matches, tz, hideScores, setHideScores = () 
           />
           <span className="switch-track"><span className="switch-thumb" /></span>
         </label>
-      </div>
-
-      {/* Country filter — its own row so it never crowds the toggles on a phone. */}
-      <div className="ml-filter">
-        <span className="ml-filter-label">Countries</span>
-        <button
-          type="button"
-          className={`ml-country${country ? ' active' : ''}`}
-          onClick={() => setPickerOpen(true)}
-          aria-haspopup="dialog"
-          aria-label={country ? `Filtering by ${country}. Change country` : 'Filter by country'}
-        >
-          <span className="ml-country-flag">{country ? FLAG_BY_TEAM[country] || '•' : '🌐'}</span>
-          <span className="ml-country-name">{country || 'All'}</span>
-          <span className="ml-country-caret" aria-hidden="true">▾</span>
-        </button>
-        {country && (
-          <button
-            type="button"
-            className="ml-country-clear"
-            onClick={() => setCountry(null)}
-            aria-label="Clear country filter, show all countries"
-          >
-            ✕
-          </button>
-        )}
       </div>
 
       {total === 0 ? (

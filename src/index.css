@@ -578,12 +578,13 @@ body {
 .ml-controls {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap; /* on a very narrow phone the scores toggle drops below rather than clipping */
+  flex-wrap: wrap;
   gap: 10px 12px;
-  margin-bottom: 10px;
+  margin-bottom: 16px;
 }
-.ml-controls .scores-toggle { flex: 0 0 auto; }
+/* Scores is a display setting, not a filter, so it's pushed to the right edge
+   while the tabs + country filter cluster on the left. */
+.ml-controls .scores-toggle { flex: 0 0 auto; margin-left: auto; }
 .ml-toggle {
   display: inline-flex;
   gap: 2px;
@@ -610,20 +611,16 @@ body {
   color: var(--accent-ink);
 }
 
-/* Country filter — second controls row, so it never crowds the toggles on a
-   phone where they can't share a line. */
+/* Country filter — sits inline next to the tabs (both filter the match list). */
 .ml-filter {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 16px;
 }
-.ml-filter-label {
-  font-size: 0.74rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--text-dim);
+/* Narrow phones: not enough room for tabs + filter + Scores on one line, so the
+   filter drops to its own full-width row (left-aligned) below tabs + Scores. */
+@media (max-width: 560px) {
+  .ml-filter { order: 3; flex: 1 0 100%; }
 }
 .ml-country {
   display: inline-flex;
