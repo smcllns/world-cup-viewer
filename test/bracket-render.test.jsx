@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, within } from '@testing-library/react'
 import Bracket from '../src/components/Bracket.jsx'
 import { FollowProvider } from '../src/context/follow.jsx'
 import { DetailContext } from '../src/context/detail.js'
@@ -44,16 +44,33 @@ describe('Bracket', () => {
 
   it('renders scores, penalties, AET, and the live badge', () => {
     renderBracket(withScores())
-    expect(screen.getByText('1–1')).toBeInTheDocument() // final score
-    expect(screen.getByText(/\(p 4–2\)/)).toBeInTheDocument() // pens
-    expect(screen.getByText('2–1')).toBeInTheDocument() // 3rd place
-    expect(screen.getByText(/AET/)).toBeInTheDocument()
-    expect(screen.getByText('3–0')).toBeInTheDocument() // plain
+    // Scores render as a per-team value flush-right on each team row.
+    const finalCard = document.getElementById('bx-m104')
+    expect(within(finalCard).getByText(/p 4–2/)).toBeInTheDocument() // pens
+    const finalScores = finalCard.querySelectorAll('.bx-side-score')
+    expect([...finalScores].map((s) => s.textContent)).toEqual(['1', '1']) // 1–1
+
+    const thirdCard = document.getElementById('bx-m103')
+    expect(within(thirdCard).getByText(/AET/)).toBeInTheDocument()
+    expect([...thirdCard.querySelectorAll('.bx-side-score')].map((s) => s.textContent)).toEqual([
+      '2',
+      '1',
+    ]) // 2–1 AET
+
+    const plainCard = document.getElementById('bx-m74')
+    expect([...plainCard.querySelectorAll('.bx-side-score')].map((s) => s.textContent)).toEqual([
+      '3',
+      '0',
+    ]) // plain 3–0
+
+    // Live badge for the in-progress match.
+    const liveCard = document.getElementById('bx-m77')
+    expect(within(liveCard).getByText(/LIVE/i)).toBeInTheDocument()
   })
 
   it('hides scores when hideScores is set', () => {
     renderBracket(withScores(), { hideScores: true })
-    expect(screen.queryByText('3–0')).not.toBeInTheDocument()
+    expect(document.querySelector('.bx-side-score')).toBeNull()
   })
 
   it('opens detail on click and on keyboard activation', () => {

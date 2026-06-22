@@ -63,20 +63,22 @@ describe('App coverage', () => {
     expect(screen.getByText(/World Cup 2026/)).toBeInTheDocument()
   })
 
-  it('toggles the global spoiler (hideScores) button', () => {
+  it('toggles the global spoiler (hideScores) switch', () => {
     render(<App />)
-    fireEvent.click(screen.getByRole('button', { name: /Scores shown/ }))
-    expect(screen.getByRole('button', { name: /Scores hidden/ })).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: /Scores hidden/ }))
-    expect(screen.getByRole('button', { name: /Scores shown/ })).toBeInTheDocument()
+    const sw = screen.getByRole('switch', { name: /Show scores/ })
+    expect(sw).toBeChecked() // scores shown by default
+    fireEvent.click(sw)
+    expect(sw).not.toBeChecked() // scores hidden
+    fireEvent.click(sw)
+    expect(sw).toBeChecked()
   })
 
-  it('changes the timezone from the header select and reflects it in the subtitle', () => {
+  it('changes the timezone from the inline subtitle select and reflects it', () => {
     render(<App />)
-    const tz = screen.getByRole('combobox', { name: /Timezone/ })
+    const tz = document.querySelector('.subtitle select.tz-inline')
+    expect(tz).toBeTruthy()
     fireEvent.change(tz, { target: { value: 'Europe/London' } })
     expect(tz.value).toBe('Europe/London')
-    expect(document.querySelector('.subtitle strong').textContent).toBe('Europe/London')
   })
 
   it('switches the match list between Upcoming and Played tabs', () => {
@@ -104,20 +106,11 @@ describe('App coverage', () => {
     expect(document.documentElement.dataset.theme).toBe('dark')
   })
 
-  it('toggles auto-refresh checkbox and the manual Refresh button', () => {
-    render(<App />)
-    const auto = screen.getByRole('checkbox', { name: /auto/i })
-    expect(auto).toBeChecked()
-    fireEvent.click(auto)
-    expect(auto).not.toBeChecked()
-    fireEvent.click(screen.getByRole('button', { name: /Refresh/ }))
-  })
-
   it('hydrates tz and hideScores from the URL', () => {
     window.history.replaceState(null, '', '/?tz=America/New_York&hide=1')
     render(<App />)
-    expect(document.querySelector('.subtitle strong').textContent).toBe('America/New York')
-    expect(screen.getByRole('button', { name: /Scores hidden/ })).toBeInTheDocument()
+    expect(screen.getByRole('combobox', { name: /Timezone/ }).value).toBe('America/New_York')
+    expect(screen.getByRole('switch', { name: /Show scores/ })).not.toBeChecked()
   })
 
   it('"As it stands" link in Groups focuses a match in the bracket', async () => {
@@ -145,10 +138,14 @@ describe('App coverage', () => {
         }),
       ])
       render(<App />)
-      await vi.waitFor(() => expect(screen.getByText(/with scores/)).toBeInTheDocument())
+      // Groups standings live behind the footer disclosure now; open it, then
+      // wait for the finished-match data to project an "As it stands" link.
       fireEvent.click(screen.getByText(/Show group tables/))
-      const link = document.querySelector('button.ais-match-link')
-      expect(link).toBeTruthy()
+      let link
+      await vi.waitFor(() => {
+        link = document.querySelector('button.ais-match-link')
+        expect(link).toBeTruthy()
+      })
       fireEvent.click(link)
       // The bracket is always mounted; clicking the link scrolls to it.
       expect(Element.prototype.scrollIntoView).toHaveBeenCalled()
@@ -157,8 +154,8 @@ describe('App coverage', () => {
     }
   })
 
-  // --- live / results merge + results bar ---------------------------------
-  it('renders live + finished scores, updated time, and live counter', async () => {
+  // --- live / results merge --------------------------------------------------
+  it('renders live + finished scores from the merged feeds', async () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-06-11T19:30:00Z'))
     try {
@@ -181,15 +178,19 @@ describe('App coverage', () => {
       })
       global.fetch = fetchWith([live, finished])
       render(<App />)
-      await vi.waitFor(() => expect(screen.getByText(/live now/)).toBeInTheDocument())
-      expect(screen.getByText(/with scores/)).toBeInTheDocument()
-      expect(screen.getByText(/updated/)).toBeInTheDocument()
+      // Both played + live (live carries a running score) land in the "Played"
+      // list. Wait for the merge, switch tabs, then assert the live LiveBadge
+      // and the finished final score both render.
+      await vi.waitFor(() => expect(global.fetch.mock.calls.length).toBeGreaterThan(1))
+      fireEvent.click(screen.getByRole('tab', { name: /Played/ }))
+      await vi.waitFor(() => expect(document.querySelector('.ml-live')).toBeInTheDocument())
+      expect(screen.getByText('2–1')).toBeInTheDocument() // finished score
     } finally {
       vi.useRealTimers()
     }
   })
 
-  it('shows error state when the OpenFootball feed fails', async () => {
+  it('still renders the schedule when the OpenFootball feed fails', async () => {
     global.fetch = vi.fn(async (url) => {
       if (typeof url === 'string' && url.startsWith(RESULTS_SOURCE.url)) {
         return { ok: false, status: 500, json: async () => ({}) }
@@ -197,7 +198,11 @@ describe('App coverage', () => {
       return { ok: true, json: async () => ({ events: [], matches: [] }) }
     })
     render(<App />)
-    await screen.findByText(/Couldn’t reach results feed/)
+    // No status bar to surface the error anymore; the app must still render the
+    // static schedule (bracket + list) regardless of the feed rejecting.
+    expect(screen.getByText(/World Cup 2026/)).toBeInTheDocument()
+    expect(document.querySelector('.bracket')).toBeInTheDocument()
+    await waitFor(() => expect(global.fetch).toHaveBeenCalled())
   })
 
   it('advances the live poll timer (30s when something is live)', async () => {
@@ -214,173 +219,17 @@ describe('App coverage', () => {
       })
       global.fetch = fetchWith([live])
       render(<App />)
-      await vi.waitFor(() => expect(screen.getByText(/live now/)).toBeInTheDocument())
+      // A live match is on screen (its LiveBadge shows in the Played list), so
+      // polling runs at the fast 30s cadence; advancing past 30s must trigger
+      // another fetch round.
+      await vi.waitFor(() => expect(global.fetch.mock.calls.length).toBeGreaterThan(1))
+      fireEvent.click(screen.getByRole('tab', { name: /Played/ }))
+      await vi.waitFor(() => expect(document.querySelector('.ml-live')).toBeInTheDocument())
       const before = global.fetch.mock.calls.length
       await vi.advanceTimersByTimeAsync(31000)
       expect(global.fetch.mock.calls.length).toBeGreaterThan(before)
     } finally {
       vi.useRealTimers()
-    }
-  })
-
-  // --- goal alerts --------------------------------------------------------
-  it('toggleGoalAlerts: no Notification support -> alert shown, stays off', () => {
-    const origNotif = global.Notification
-    const origWinNotif = window.Notification
-    delete global.Notification
-    delete window.Notification
-    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {})
-    try {
-      render(<App />)
-      fireEvent.click(screen.getByRole('checkbox', { name: /goals/ }))
-      expect(alertSpy).toHaveBeenCalledWith('This browser does not support notifications.')
-    } finally {
-      global.Notification = origNotif
-      window.Notification = origWinNotif
-    }
-  })
-
-  it('toggleGoalAlerts: requestPermission rejects -> treated as denied (blocked alert)', async () => {
-    class FakeNotification {
-      static permission = 'default'
-      static requestPermission = vi.fn(async () => {
-        throw new Error('user dismissed')
-      })
-    }
-    global.Notification = FakeNotification
-    window.Notification = FakeNotification
-    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {})
-    try {
-      render(<App />)
-      fireEvent.click(screen.getByRole('checkbox', { name: /goals/ }))
-      await waitFor(() =>
-        expect(alertSpy).toHaveBeenCalledWith(expect.stringMatching(/blocked/i)),
-      )
-    } finally {
-      delete global.Notification
-      delete window.Notification
-    }
-  })
-
-  it('toggleGoalAlerts: granted -> enables, scope select, toggle scope, disable', async () => {
-    class FakeNotification {
-      static permission = 'granted'
-      static requestPermission = vi.fn(async () => 'granted')
-    }
-    global.Notification = FakeNotification
-    window.Notification = FakeNotification
-    try {
-      render(<App />)
-      const cb = screen.getByRole('checkbox', { name: /goals/ })
-      fireEvent.click(cb)
-      await waitFor(() => expect(cb).toBeChecked())
-      const scope = screen.getByRole('combobox', { name: /Goal-alert scope/ })
-      fireEvent.change(scope, { target: { value: 'all' } })
-      expect(scope.value).toBe('all')
-      fireEvent.click(cb)
-      await waitFor(() => expect(cb).not.toBeChecked())
-    } finally {
-      delete global.Notification
-      delete window.Notification
-    }
-  })
-
-  it('fires goal notifications when a new goal arrives in a live match (scope all)', async () => {
-    const fired = []
-    class FakeNotification {
-      constructor(title, opts) {
-        fired.push({ title, opts })
-      }
-      static permission = 'granted'
-      static requestPermission = vi.fn(async () => 'granted')
-    }
-    global.Notification = FakeNotification
-    window.Notification = FakeNotification
-    localStorage.setItem('wc2026:goalAlerts', JSON.stringify({ enabled: true, scope: 'all' }))
-    vi.useFakeTimers()
-    vi.setSystemTime(new Date('2026-06-11T19:30:00Z'))
-    try {
-      let goals = []
-      global.fetch = vi.fn(async (url) => {
-        if (typeof url === 'string' && url.startsWith(LIVE_SOURCE.url)) {
-          return {
-            ok: true,
-            json: async () => ({
-              events: [
-                espnEvent({
-                  home: 'Mexico',
-                  away: 'South Africa',
-                  date: '2026-06-11T19:00:00Z',
-                  state: 'in',
-                  hs: String(goals.length),
-                  as: '0',
-                  goals,
-                }),
-              ],
-            }),
-          }
-        }
-        return { ok: true, json: async () => ({ matches: [] }) }
-      })
-      render(<App />)
-      await vi.waitFor(() => expect(screen.getByText(/live now/)).toBeInTheDocument())
-      goals = [{ side: 'home', name: 'Jimenez', minute: 23 }]
-      await vi.advanceTimersByTimeAsync(31000)
-      await vi.waitFor(() => expect(fired.length).toBeGreaterThan(0))
-      expect(fired[0].title).toMatch(/GOAL/)
-    } finally {
-      vi.useRealTimers()
-      delete global.Notification
-      delete window.Notification
-    }
-  })
-
-  it('goal notification swallows a constructor that throws', async () => {
-    class FakeNotification {
-      constructor() {
-        throw new Error('cannot construct outside SW')
-      }
-      static permission = 'granted'
-      static requestPermission = vi.fn(async () => 'granted')
-    }
-    global.Notification = FakeNotification
-    window.Notification = FakeNotification
-    localStorage.setItem('wc2026:goalAlerts', JSON.stringify({ enabled: true, scope: 'all' }))
-    vi.useFakeTimers()
-    vi.setSystemTime(new Date('2026-06-11T19:30:00Z'))
-    try {
-      let goals = []
-      global.fetch = vi.fn(async (url) => {
-        if (typeof url === 'string' && url.startsWith(LIVE_SOURCE.url)) {
-          return {
-            ok: true,
-            json: async () => ({
-              events: [
-                espnEvent({
-                  home: 'Mexico',
-                  away: 'South Africa',
-                  date: '2026-06-11T19:00:00Z',
-                  state: 'in',
-                  hs: String(goals.length),
-                  as: '0',
-                  goals,
-                }),
-              ],
-            }),
-          }
-        }
-        return { ok: true, json: async () => ({ matches: [] }) }
-      })
-      render(<App />)
-      await vi.waitFor(() => expect(screen.getByText(/live now/)).toBeInTheDocument())
-      goals = [{ side: 'home', name: 'Jimenez', minute: 23 }]
-      // The throw inside the loop is caught; advancing the poll must not crash.
-      await vi.advanceTimersByTimeAsync(31000)
-      expect(screen.getByText(/live now/)).toBeInTheDocument()
-    } finally {
-      vi.useRealTimers()
-      delete global.Notification
-      delete window.Notification
     }
   })
 
@@ -393,25 +242,6 @@ describe('App coverage', () => {
       fireEvent.click(screen.getByRole('button', { name: /Toggle theme/ }))
       // Theme still flips even though persistence failed.
       expect(document.documentElement.dataset.theme).toBe('light')
-    } finally {
-      spy.mockRestore()
-    }
-  })
-
-  it('readGoalAlerts swallows a corrupt localStorage value', () => {
-    localStorage.setItem('wc2026:goalAlerts', '{not valid json')
-    render(<App />)
-    expect(screen.getByRole('checkbox', { name: /goals/ })).not.toBeChecked()
-  })
-
-  it('persist-goalAlerts effect swallows a localStorage.setItem failure', () => {
-    const spy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation((key) => {
-      if (key === 'wc2026:goalAlerts') throw new Error('private mode')
-    })
-    try {
-      // The persist effect runs on mount and its setItem throws — must be caught.
-      render(<App />)
-      expect(screen.getByText(/World Cup 2026/)).toBeInTheDocument()
     } finally {
       spy.mockRestore()
     }

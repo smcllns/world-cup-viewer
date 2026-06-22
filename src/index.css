@@ -61,10 +61,11 @@ body {
 
 /* ---------- Header ---------- */
 .app-header {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
-  margin-bottom: 28px;
+  margin-bottom: 18px;
 }
 .title-block {
   text-align: center;
@@ -72,7 +73,7 @@ body {
 .title-block h1 {
   margin: 0;
   font-family: var(--font-display);
-  font-size: 2.6rem;
+  font-size: 2.4rem;
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: -0.015em;
@@ -86,54 +87,76 @@ body {
   filter: drop-shadow(0 2px 6px rgba(244, 197, 66, 0.4));
 }
 .subtitle {
-  margin: 10px 0 0;
+  margin: 8px 0 0;
   color: var(--text-dim);
   font-size: 0.95rem;
 }
-.subtitle strong {
-  color: var(--accent);
-}
-.header-actions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  margin-top: 18px;
-}
-.tz-select {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  background: var(--bg-soft);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 0 10px;
-  color: var(--text-dim);
-}
-.tz-select-icon { font-size: 0.85rem; }
-.tz-select select {
+/* Inline timezone selector inside the subtitle sentence. */
+.tz-inline {
+  appearance: none;
+  -webkit-appearance: none;
   background: transparent;
   border: 0;
-  color: var(--text);
+  border-bottom: 1px dashed var(--border);
+  color: var(--accent);
   font: inherit;
-  font-size: 0.85rem;
-  padding: 9px 2px;
+  font-weight: 600;
   cursor: pointer;
+  padding: 0 16px 1px 2px;
   outline: none;
+  background-image: linear-gradient(45deg, transparent 50%, var(--accent) 50%),
+    linear-gradient(135deg, var(--accent) 50%, transparent 50%);
+  background-position: right 5px center, right 1px center;
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
 }
-.spoiler-btn {
-  background: var(--bg-soft);
-  border: 1px solid var(--border);
-  color: var(--text-dim);
-  padding: 9px 13px;
-  border-radius: 10px;
-  font: inherit;
-  font-size: 0.85rem;
+.tz-inline:hover { border-bottom-color: var(--accent); }
+.tz-inline option { color: var(--text); background: var(--bg-soft); }
+
+/* Top-right hero corner: scores toggle + theme. Absolutely positioned so the
+   title stays centered. */
+.hero-corner {
+  position: absolute;
+  top: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.scores-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   cursor: pointer;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-dim);
+  user-select: none;
 }
-.spoiler-btn:hover { border-color: var(--accent); color: var(--text); }
-.spoiler-btn.active { color: var(--text); }
+.scores-toggle input { position: absolute; opacity: 0; width: 0; height: 0; }
+.switch-track {
+  position: relative;
+  width: 38px;
+  height: 22px;
+  border-radius: 999px;
+  background: var(--border);
+  transition: background 0.18s ease;
+  flex: 0 0 auto;
+}
+.switch-thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  transition: transform 0.18s ease;
+}
+.scores-toggle input:checked + .switch-track { background: var(--accent); }
+.scores-toggle input:checked + .switch-track .switch-thumb { transform: translateX(16px); }
+.scores-toggle input:focus-visible + .switch-track { box-shadow: 0 0 0 2px var(--accent); }
 
 /* ---------- Score & spoilers ---------- */
 .score {
@@ -158,84 +181,57 @@ body {
 }
 .bx-pens { font-size: 0.62rem; font-weight: 600; color: var(--text-faint); }
 
-/* ---------- Results bar ---------- */
-.results-bar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px 14px;
-  background: var(--bg-soft);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 11px 18px;
-  margin-bottom: 22px;
-  font-size: 0.82rem;
-  color: var(--text-dim);
-}
-.results-dot {
-  width: 9px; height: 9px; border-radius: 50%;
-  background: var(--text-faint);
-  flex: 0 0 auto;
-}
-.results-ok .results-dot { background: var(--accent); }
-.results-loading .results-dot { background: var(--gold); animation: pulse 1.2s infinite; }
-.results-error .results-dot { background: var(--accent-2); }
-.results-text { font-weight: 600; color: var(--text); }
-.results-updated { color: var(--text-faint); font-size: 0.76rem; }
-.results-source { color: var(--text-faint); font-size: 0.7rem; opacity: 0.8; }
-.results-source a { color: var(--text-dim); text-decoration: none; }
-.results-source a:hover { color: var(--accent); text-decoration: underline; }
-.results-live {
-  font-size: 0.76rem; font-weight: 700; color: var(--live);
-  animation: pulse 1.4s infinite;
-}
+/* ---------- Score check badge ---------- */
 .score-check {
   margin-top: 4px; text-align: center;
   font-size: 0.66rem; font-weight: 600; color: var(--text-faint);
 }
 .score-check-warn { color: var(--accent-2); font-weight: 700; }
-.results-auto {
-  display: inline-flex; align-items: center; gap: 4px;
-  font-size: 0.76rem; color: var(--text-faint); cursor: pointer;
-  margin-left: auto;
-  padding-left: 14px;
-  border-left: 1px solid var(--border);
+
+/* ---------- Section separators & footer ---------- */
+.section-rule {
+  border: 0;
+  border-top: 1px solid var(--border);
+  margin: 40px 0;
 }
-.results-alerts {
-  display: inline-flex; align-items: center; gap: 4px;
-  font-size: 0.76rem; color: var(--text-faint); cursor: pointer;
-}
-.results-alert-scope {
-  background: transparent;
-  border: 1px solid var(--border);
-  color: var(--text-dim);
-  border-radius: 8px;
-  font-size: 0.74rem;
-  padding: 3px 6px;
-  cursor: pointer;
-}
-.results-refresh {
-  background: transparent;
-  border: 1px solid var(--border);
-  color: var(--text-dim);
-  padding: 5px 11px;
-  border-radius: 8px;
-  font-size: 0.78rem;
-  cursor: pointer;
-}
-.results-refresh:hover:not(:disabled) { border-color: var(--accent); color: var(--text); }
-.results-refresh:disabled { opacity: 0.5; cursor: default; }
-.score-hidden {
-  cursor: pointer;
-  font-weight: 600;
-  font-size: 0.78rem;
-  color: var(--text-dim);
-  display: inline-flex;
+.app-footer {
+  display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 5px;
+  gap: 22px;
 }
-.score-hidden:hover { border-color: var(--accent); color: var(--text); }
-.score-hidden-label { font-size: 0.66rem; color: var(--text-faint); }
+.groups-disclosure {
+  width: 100%;
+  max-width: 760px;
+}
+.groups-disclosure > summary {
+  list-style: none;
+  cursor: pointer;
+  text-align: center;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-dim);
+  padding: 9px 14px;
+  background: var(--bg-soft);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+.groups-disclosure > summary::-webkit-details-marker { display: none; }
+.groups-disclosure > summary:hover { color: var(--text); border-color: var(--accent); }
+.groups-disclosure[open] > summary { margin-bottom: 18px; }
+.footer-fineprint {
+  max-width: 760px;
+  text-align: center;
+  font-size: 0.74rem;
+  line-height: 1.55;
+  color: var(--text-faint);
+}
+.footer-fineprint p { margin: 0 0 8px; }
+.footer-fineprint p:last-child { margin-bottom: 0; }
+.footer-fineprint a { color: var(--text-dim); text-decoration: none; }
+.footer-fineprint a:hover { color: var(--accent); text-decoration: underline; }
+.footer-fineprint .disclaimer,
+.footer-fineprint .credit { font-size: 0.68rem; }
 
 /* ---------- Standings ---------- */
 .standings-legend {
@@ -322,19 +318,21 @@ body {
 }
 
 /* ---------- Bracket ---------- */
-/* Full-bleed breakout: the bracket lives inside .app (max-width 1080px) but
-   needs the whole viewport. This is self-contained — no App.jsx changes. */
+/* Single-sided pyramid: 5 columns R32 → R16 → QF → SF → Final flow left→right.
+   Full-bleed breakout: the bracket lives inside .app (max-width 1080px) but
+   needs the whole viewport. */
 .bracket-wrap {
   width: 100vw;
   max-width: 100vw;
   margin-left: calc(50% - 50vw);
   margin-right: calc(50% - 50vw);
-  padding: 0 20px;
+  padding: 0 24px;
   box-sizing: border-box;
 }
 .bracket {
   --bx-conn: var(--bracket-line);
-  --bx-gap: 26px;
+  --bx-gap: 30px;
+  --bx-stub: calc(var(--bx-gap) + 1px);
   display: flex;
   gap: var(--bx-gap);
   align-items: stretch;
@@ -345,15 +343,15 @@ body {
   flex: 1 1 0;
   min-width: 0;
 }
-.bx-col-final { flex: 1.1 1 0; }
+.bx-col-final { flex: 1.05 1 0; }
 .bx-col-head {
   font-family: var(--font-display);
-  font-size: 0.7rem;
+  font-size: 0.68rem;
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--text-dim);
   text-align: center;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
   font-weight: 700;
 }
 .bx-final-head { color: var(--gold); }
@@ -375,65 +373,54 @@ body {
   justify-content: center;
 }
 
-/* Connector geometry. A feeder's horizontal stub spans the full inter-column
-   gap so it lands on the vertical arm drawn at the fed box's edge. The +1px
-   covers the gap-vs-edge rounding so lines visually touch. */
-.bracket { --bx-stub: calc(var(--bx-gap) + 1px); }
-
-/* --- Outgoing stub: every box in a feeding round sends a horizontal line
-   across the gap to the round it feeds. The outer R32 columns are pure feeders
-   (.bx-connect-none) and emit toward the centre; .bx-connect-right/-left are
-   themselves fed AND feed onward, so they emit too. --- */
-.bx-connect-right .bx-cell::after,
-.bx-connect-left .bx-cell::after,
-.bx-col.bx-connect-none:first-child .bx-cell::after,
-.bx-col.bx-connect-none:last-child .bx-cell::after {
+/* --- Outgoing stub: every feeding column (.bx-emit) sends a rightward
+   horizontal line across the gap to the round it feeds. The +1px covers the
+   gap-vs-edge rounding so lines visually touch the card edge. --- */
+.bx-emit .bx-cell::after {
   content: '';
   position: absolute;
   top: 50%;
+  left: 100%;
   width: var(--bx-stub);
   border-top: 1.5px solid var(--bx-conn);
 }
-/* Left half + leftmost R32 feed rightward; right half + rightmost R32 feed left. */
-.bx-connect-right .bx-cell::after,
-.bx-col.bx-connect-none:first-child .bx-cell::after { left: 100%; }
-.bx-connect-left .bx-cell::after,
-.bx-col.bx-connect-none:last-child .bx-cell::after { right: 100%; }
 
-/* --- Vertical arm: a fed box draws a vertical line along its incoming edge,
-   spanning up to its top feeder and down to its bottom feeder. The body uses
-   space-around, so the two feeders sit symmetric about this box's centre — a
-   full-cell-height line centred on the box reaches both feeder rows. --- */
-.bx-connect-right .bx-cell::before,
-.bx-connect-left .bx-cell::before {
+/* --- Vertical arm: a fed column (.bx-arm) draws a vertical line along its
+   incoming (left) edge, spanning up to its top feeder and down to its bottom
+   feeder. The body uses space-around, so the two feeders sit symmetric about
+   this box's centre — a full-cell-height line centred on the box reaches both
+   feeder rows. The Final's third-place cell carries no arm. --- */
+.bx-arm .bx-cell:not(.bx-cell-third)::before {
   content: '';
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
   height: 100%;
   width: 0;
-}
-.bx-connect-right .bx-cell::before {
   right: 100%;
-  border-left: 1.5px solid var(--bx-conn);
-}
-.bx-connect-left .bx-cell::before {
-  left: 100%;
   border-left: 1.5px solid var(--bx-conn);
 }
 
 .bx-match {
   background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius, 10px);
-  padding: 7px 9px;
+  border-radius: 9px;
+  /* Border replaced by a soft drop shadow + faint ring so the COLORED
+     connector lines are the only linear structure competing for attention. */
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18), 0 0 0 1px var(--border);
+  padding: 4px 8px;
   cursor: pointer;
   position: relative;
   z-index: 1;
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
 }
+/* Square the connecting (left/right) corners so connector lines meet the card
+   flush; keep a small radius only on the top/bottom-outer corners. */
+.bx-emit .bx-match { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+.bx-arm .bx-match { border-top-left-radius: 0; border-bottom-left-radius: 0; }
 /* Flash when navigated to from an "As it stands" match link. */
 .bx-match.bx-focus {
-  border-color: var(--accent);
   box-shadow: 0 0 0 2px var(--accent);
   animation: bx-focus-pulse 2.2s ease;
 }
@@ -441,56 +428,85 @@ body {
   0%, 70% { box-shadow: 0 0 0 2px var(--accent); }
   100% { box-shadow: 0 0 0 2px transparent; }
 }
-.bx-match:hover { border-color: var(--accent); }
+.bx-match:hover { box-shadow: 0 2px 6px rgba(0, 0, 0, 0.22), 0 0 0 1px var(--accent); }
 .bx-col-final .bx-match {
-  border-color: var(--gold);
-  box-shadow: 0 0 0 1px rgba(244, 197, 66, 0.3) inset;
+  box-shadow: 0 2px 8px rgba(244, 197, 66, 0.18), 0 0 0 1px var(--gold);
 }
+
+/* Left column: M-number + compact date (or live badge) stacked. */
 .bx-meta {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 0.58rem;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 1px;
+  flex: 0 0 auto;
+  min-width: 30px;
+  padding-right: 7px;
+  border-right: 1px solid var(--border);
+  font-size: 0.56rem;
   color: var(--text-faint);
-  margin-bottom: 5px;
-  gap: 6px;
+  line-height: 1.15;
 }
-.bx-num { font-weight: 700; letter-spacing: 0.02em; }
+.bx-num { font-weight: 800; letter-spacing: 0.01em; color: var(--text-dim); }
+.bx-date { white-space: nowrap; }
+.bx-teams {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  flex: 1 1 0;
+  min-width: 0;
+  gap: 1px;
+}
 .bx-side {
   display: flex;
   align-items: center;
   gap: 5px;
-  padding: 1px 0;
   min-width: 0;
 }
-.bx-flag { font-size: 0.9rem; flex: 0 0 auto; }
+.bx-flag { font-size: 0.85rem; flex: 0 0 auto; }
 .bx-team {
-  font-size: 0.78rem;
+  font-size: 0.75rem;
   font-weight: 600;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  flex: 1 1 auto;
 }
 .bx-tbd {
-  font-size: 0.68rem;
+  font-size: 0.66rem;
   color: var(--text-dim);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  flex: 1 1 auto;
 }
-.bx-score {
-  text-align: center;
+.bx-side-score {
+  flex: 0 0 auto;
   font-weight: 800;
-  font-size: 0.85rem;
-  margin-top: 4px;
+  font-size: 0.78rem;
+  color: var(--text);
+  margin-left: 6px;
 }
+.bx-score-extra {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.56rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--text-faint);
+}
+.bx-score-extra .score-check { margin-top: 0; }
 .bx-third-label {
   text-align: center;
-  font-size: 0.62rem;
+  font-size: 0.6rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: var(--text-faint);
-  margin: 12px 0 4px;
+  margin: 10px 0 4px;
 }
 
 /* Narrow / phone: fall back to a horizontal-scrolling row of fixed columns so
@@ -498,8 +514,8 @@ body {
 @media (max-width: 900px) {
   .bracket-wrap { padding: 0 16px; }
   .bracket { overflow-x: auto; padding-bottom: 14px; }
-  .bx-col { flex: 0 0 158px; }
-  .bx-col-final { flex: 0 0 172px; }
+  .bx-col { flex: 0 0 184px; }
+  .bx-col-final { flex: 0 0 184px; }
 }
 
 /* ---------- Match list ---------- */
@@ -646,9 +662,13 @@ body {
   .standings-table td {
     padding: 5px 2px;
   }
-  .results-bar {
-    font-size: 0.78rem;
+  /* Corner controls drop below the title on phones so they don't crowd it. */
+  .hero-corner {
+    position: static;
+    margin-bottom: 12px;
+    justify-content: center;
   }
+  .scores-toggle-label { display: none; }
 
   /* Prevent iOS auto-zoom on focus by keeping form text >= 16px. */
   select {

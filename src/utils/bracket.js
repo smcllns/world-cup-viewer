@@ -20,6 +20,19 @@ export const BRACKET = {
   third: [103],
 }
 
+// Single-sided pyramid: columns flow left→right R32 → R16 → QF → SF → Final,
+// with the 3rd-place match shown under the Final (no connectors). Each round is
+// the old left-half stacked on top of the old right-half, so feeder boxes stay
+// vertically adjacent and the connectors meet cleanly.
+export const BRACKET_LINEAR = {
+  R32: [...BRACKET.left.R32, ...BRACKET.right.R32],
+  R16: [...BRACKET.left.R16, ...BRACKET.right.R16],
+  QF: [...BRACKET.left.QF, ...BRACKET.right.QF],
+  SF: [...BRACKET.left.SF, ...BRACKET.right.SF],
+  Final: [...BRACKET.final],
+  third: [...BRACKET.third],
+}
+
 export function matchesByNum(matches) {
   return matches.reduce((acc, m) => {
     acc[m.num] = m
