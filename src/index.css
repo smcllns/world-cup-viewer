@@ -578,12 +578,13 @@ body {
 .ml-controls {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap; /* on a very narrow phone the scores toggle drops below rather than clipping */
+  flex-wrap: wrap;
   gap: 10px 12px;
   margin-bottom: 16px;
 }
-.ml-controls .scores-toggle { flex: 0 0 auto; }
+/* Scores is a display setting, not a filter, so it's pushed to the right edge
+   while the tabs + country filter cluster on the left. */
+.ml-controls .scores-toggle { flex: 0 0 auto; margin-left: auto; }
 .ml-toggle {
   display: inline-flex;
   gap: 2px;
@@ -608,6 +609,91 @@ body {
 .ml-tab.active {
   background: var(--accent);
   color: var(--accent-ink);
+}
+
+/* Country filter — sits inline next to the tabs (both filter the match list). */
+.ml-filter {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+/* Narrow phones: not enough room for tabs + filter + Scores on one line, so the
+   filter drops to its own full-width row (left-aligned) below tabs + Scores. */
+@media (max-width: 560px) {
+  .ml-filter { order: 3; flex: 1 0 100%; }
+}
+.ml-country {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 12px;
+  background: var(--bg-soft);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text);
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.12s ease;
+}
+.ml-country:hover { border-color: var(--accent); }
+.ml-country.active { border-color: var(--accent); }
+.ml-country-flag { font-size: 1.05rem; line-height: 1; }
+.ml-country-caret { color: var(--text-faint); font-size: 0.7rem; }
+.ml-country-clear {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--bg-soft);
+  color: var(--text-dim);
+  cursor: pointer;
+  font-size: 0.78rem;
+  line-height: 1;
+}
+.ml-country-clear:hover { color: var(--accent-2); border-color: var(--accent-2); }
+
+/* Country picker modal (reuses .md-overlay / .md-card). */
+.cs-card { width: min(440px, 100%); }
+.cs-title {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 800;
+  margin: 0 0 14px;
+}
+.cs-list {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+.cs-item {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 9px 11px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  color: var(--text);
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.12s ease, background 0.12s ease, color 0.12s ease;
+}
+.cs-item:hover { border-color: var(--accent); }
+.cs-item.active { border-color: var(--accent); background: var(--accent); color: var(--accent-ink); }
+.cs-item-all { grid-column: 1 / -1; }
+.cs-flag { font-size: 1.25rem; line-height: 1; flex: 0 0 auto; }
+.cs-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+@media (max-width: 560px) {
+  .cs-list { grid-template-columns: 1fr; }
 }
 
 .ml-empty { color: var(--text-faint); font-size: 0.9rem; padding: 8px 2px; }
