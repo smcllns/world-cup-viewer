@@ -6,6 +6,7 @@ import { dayKey, formatTime, tzAbbrev, liveState, teamKickoffTooltip } from '../
 import { useFollow } from '../context/follow.jsx'
 import { useDetail } from '../context/detail.js'
 import LiveBadge from './LiveBadge.jsx'
+import CountrySelect from './CountrySelect.jsx'
 
 // A match is "played" once it has a final score, or the feed/clock says it's
 // finished. Everything else (including live games) is "upcoming".
@@ -65,10 +66,14 @@ function MatchRow({ m, tz, hideScores }) {
 
 export default function MatchList({ matches, tz, hideScores, setHideScores = () => {} }) {
   const [tab, setTab] = useState('upcoming') // 'upcoming' | 'played'
+  const [country, setCountry] = useState(null) // null = all countries
+  const [pickerOpen, setPickerOpen] = useState(false)
 
   const groups = useMemo(() => {
     const want = tab === 'played'
-    const filtered = matches.filter((m) => isPlayed(m) === want)
+    const filtered = matches.filter(
+      (m) => isPlayed(m) === want && (!country || m.t1 === country || m.t2 === country),
+    )
     const byDay = {}
     for (const m of filtered) {
       const k = dayKey(m.ko, tz)
@@ -82,7 +87,7 @@ export default function MatchList({ matches, tz, hideScores, setHideScores = () 
     const keys = Object.keys(byDay).sort()
     if (want) keys.reverse() // reverse-chronological for played
     return keys.map((k) => ({ key: k, matches: byDay[k] }))
-  }, [matches, tz, tab])
+  }, [matches, tz, tab, country])
 
   const total = groups.reduce((n, g) => n + g.matches.length, 0)
 
@@ -124,8 +129,34 @@ export default function MatchList({ matches, tz, hideScores, setHideScores = () 
         </label>
       </div>
 
+      {/* Country filter — its own row so it never crowds the toggles on a phone. */}
+      <div className="ml-filter">
+        <span className="ml-filter-label">Countries</span>
+        <button
+          type="button"
+          className={`ml-country${country ? ' active' : ''}`}
+          onClick={() => setPickerOpen(true)}
+          aria-haspopup="dialog"
+          aria-label={country ? `Filtering by ${country}. Change country` : 'Filter by country'}
+        >
+          <span className="ml-country-flag">{country ? FLAG_BY_TEAM[country] || '•' : '🌐'}</span>
+          <span className="ml-country-name">{country || 'All'}</span>
+          <span className="ml-country-caret" aria-hidden="true">▾</span>
+        </button>
+        {country && (
+          <button
+            type="button"
+            className="ml-country-clear"
+            onClick={() => setCountry(null)}
+            aria-label="Clear country filter, show all countries"
+          >
+            ✕
+          </button>
+        )}
+      </div>
+
       {total === 0 ? (
-        <p className="ml-empty">No {tab} matches.</p>
+        <p className="ml-empty">No {tab} matches{country ? ` for ${country}` : ''}.</p>
       ) : (
         groups.map((g) => (
           <section key={g.key} className="ml-day">
@@ -137,6 +168,14 @@ export default function MatchList({ matches, tz, hideScores, setHideScores = () 
             </div>
           </section>
         ))
+      )}
+
+      {pickerOpen && (
+        <CountrySelect
+          selected={country}
+          onSelect={setCountry}
+          onClose={() => setPickerOpen(false)}
+        />
       )}
     </div>
   )

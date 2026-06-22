@@ -95,3 +95,54 @@ describe('MatchList', () => {
     expect(heads[1]).toHaveTextContent('Jun 12')
   })
 })
+
+describe('MatchList country filter', () => {
+  const openPicker = () => {
+    // The trigger's label is "Filter by country" when empty and "Filtering by
+    // X. Change country" once a country is picked — match either.
+    fireEvent.click(screen.getByRole('button', { name: /^(Filter by country|Filtering by)/ }))
+    return screen.getByRole('dialog', { name: 'Filter by country' })
+  }
+
+  it('defaults to all countries', () => {
+    renderList({ matches: fixture })
+    expect(screen.getByRole('button', { name: /Filter by country/ })).toHaveTextContent('All')
+    // Every upcoming match is visible while unfiltered.
+    expect(screen.getByText('Serbia')).toBeInTheDocument()
+    expect(screen.getByText('France')).toBeInTheDocument()
+  })
+
+  it('filters the list to a single country once picked', () => {
+    renderList({ matches: fixture })
+    const dialog = openPicker()
+    fireEvent.click(within(dialog).getByRole('button', { name: /Brazil/ }))
+    // Brazil v Serbia stays; the other countries' matches drop out.
+    expect(screen.getByText('Serbia')).toBeInTheDocument()
+    expect(screen.queryByText('France')).not.toBeInTheDocument()
+    expect(screen.queryByText('Spain')).not.toBeInTheDocument()
+  })
+
+  it('clears the filter with the ✕ button', () => {
+    renderList({ matches: fixture })
+    const dialog = openPicker()
+    fireEvent.click(within(dialog).getByRole('button', { name: /Brazil/ }))
+    expect(screen.queryByText('France')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: /Clear country filter/ }))
+    expect(screen.getByText('France')).toBeInTheDocument()
+  })
+
+  it('clears the filter via the All countries option', () => {
+    renderList({ matches: fixture })
+    fireEvent.click(within(openPicker()).getByRole('button', { name: /Brazil/ }))
+    expect(screen.queryByText('France')).not.toBeInTheDocument()
+    fireEvent.click(within(openPicker()).getByRole('button', { name: /All countries/ }))
+    expect(screen.getByText('France')).toBeInTheDocument()
+  })
+
+  it('shows a country-specific empty state', () => {
+    renderList({ matches: fixture })
+    // Norway is a real team with no match in the fixture.
+    fireEvent.click(within(openPicker()).getByRole('button', { name: /Norway/ }))
+    expect(screen.getByText('No upcoming matches for Norway.')).toBeInTheDocument()
+  })
+})
