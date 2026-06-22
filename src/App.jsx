@@ -175,10 +175,10 @@ export default function App() {
               {timezoneOptions(detectedTz).map((z) => (
                 <option key={z} value={z}>
                   {z.replace(/_/g, ' ')}
-                  {z === detectedTz ? '  (yours)' : ''}
                 </option>
               ))}
-            </select>
+            </select>{' '}
+            timezone
           </p>
         </div>
       </header>

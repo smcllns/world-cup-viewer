@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { STAGE_LABELS } from '../data/matches.js'
 import { FLAG_BY_TEAM } from '../data/teams.js'
 import { BRACKET_LINEAR, matchesByNum } from '../utils/bracket.js'
@@ -59,9 +59,8 @@ function BracketMatch({ num, byNum, tz, hideScores }) {
   )
 }
 
-// `connect` controls which connectors a column draws. In the single-sided
-// pyramid every column feeds rightward, so all but the Final emit a stub, and
-// every column but R32 draws the incoming vertical arm.
+// `emit`/`arm` only square the card's connecting corners so the SVG lines meet
+// the card edge flush (emit = feeds rightward, arm = fed from the left).
 function Column({ title, nums, emit, arm, byNum, tz, hideScores }) {
   return (
     <div className={`bx-col${emit ? ' bx-emit' : ''}${arm ? ' bx-arm' : ''}`}>
@@ -77,9 +76,86 @@ function Column({ title, nums, emit, arm, byNum, tz, hideScores }) {
   )
 }
 
+// Each parent node is fed by an adjacent pair of children in the previous round
+// (BRACKET_LINEAR keeps feeders vertically adjacent), so the tree edges are just
+// parent i ← children 2i, 2i+1 across each round transition.
+function buildEdges() {
+  const rounds = [
+    BRACKET_LINEAR.R32,
+    BRACKET_LINEAR.R16,
+    BRACKET_LINEAR.QF,
+    BRACKET_LINEAR.SF,
+    BRACKET_LINEAR.Final,
+  ]
+  const edges = []
+  for (let r = 0; r < rounds.length - 1; r++) {
+    const child = rounds[r]
+    const parent = rounds[r + 1]
+    for (let i = 0; i < parent.length; i++) {
+      edges.push({ parent: parent[i], a: child[2 * i], b: child[2 * i + 1] })
+    }
+  }
+  return edges
+}
+
 export default function Bracket({ matches, tz, hideScores, focusMatch, onFocusHandled }) {
   const byNum = matchesByNum(matches)
   const common = { byNum, tz, hideScores }
+  const edges = useMemo(buildEdges, [])
+  const bracketRef = useRef(null)
+  const [lines, setLines] = useState([])
+  const [size, setSize] = useState({ w: 0, h: 0 })
+
+  // Draw the connector tree as a computed SVG overlay. Reading each card's real
+  // box (relative to the bracket) means the elbows land exactly between a node
+  // and its two feeders regardless of card height, gaps, or column spacing —
+  // which a pure-CSS pseudo-element approach can't guarantee.
+  useLayoutEffect(() => {
+    const wrap = bracketRef.current
+    if (!wrap) return
+    const compute = () => {
+      const base = wrap.getBoundingClientRect()
+      const pos = (n) => {
+        const el = wrap.querySelector(`#bx-m${n}`)
+        if (!el) return null
+        const r = el.getBoundingClientRect()
+        const x0 = r.left - base.left + wrap.scrollLeft
+        const y0 = r.top - base.top + wrap.scrollTop
+        return { left: x0, right: x0 + r.width, midY: y0 + r.height / 2 }
+      }
+      const segs = []
+      for (const { parent, a, b } of edges) {
+        const pa = pos(a)
+        const pb = pos(b)
+        const pp = pos(parent)
+        if (!pa || !pb || !pp) continue
+        const childRight = Math.max(pa.right, pb.right)
+        const midX = Math.round((childRight + pp.left) / 2)
+        const ya = Math.round(pa.midY)
+        const yb = Math.round(pb.midY)
+        const yp = Math.round(pp.midY)
+        // Two stubs out of the children, a vertical join, one stub into the parent.
+        segs.push(`M${Math.round(pa.right)} ${ya}H${midX}`)
+        segs.push(`M${Math.round(pb.right)} ${yb}H${midX}`)
+        segs.push(`M${midX} ${ya}V${yb}`)
+        segs.push(`M${midX} ${yp}H${Math.round(pp.left)}`)
+      }
+      setLines(segs)
+      setSize({ w: wrap.scrollWidth, h: wrap.scrollHeight })
+    }
+    compute()
+    // ResizeObserver is absent in some environments (e.g. jsdom); degrade to a
+    // one-shot compute + window-resize there rather than crashing.
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(compute) : null
+    ro?.observe(wrap)
+    window.addEventListener('resize', compute)
+    // Fonts can settle after first paint and shift card heights; recompute once.
+    if (document.fonts?.ready) document.fonts.ready.then(compute)
+    return () => {
+      ro?.disconnect()
+      window.removeEventListener('resize', compute)
+    }
+  }, [edges, matches, tz, hideScores])
 
   // When arriving from an "As it stands" link, scroll the target match into
   // view (the bracket can scroll horizontally on narrow screens) and flash a
@@ -97,7 +173,12 @@ export default function Bracket({ matches, tz, hideScores, focusMatch, onFocusHa
 
   return (
     <div className="bracket-wrap">
-      <div className="bracket">
+      <div className="bracket" ref={bracketRef}>
+        <svg className="bx-lines" width={size.w} height={size.h} aria-hidden="true">
+          {lines.map((d, i) => (
+            <path key={i} d={d} />
+          ))}
+        </svg>
         <Column title={STAGE_LABELS.R32} nums={BRACKET_LINEAR.R32} emit {...common} />
         <Column title={STAGE_LABELS.R16} nums={BRACKET_LINEAR.R16} emit arm {...common} />
         <Column title={STAGE_LABELS.QF} nums={BRACKET_LINEAR.QF} emit arm {...common} />
@@ -109,7 +190,7 @@ export default function Bracket({ matches, tz, hideScores, focusMatch, onFocusHa
             <div className="bx-cell">
               <BracketMatch num={BRACKET_LINEAR.Final[0]} {...common} />
             </div>
-            <div className="bx-third-label">{STAGE_LABELS['3rd']}</div>
+            <div className="bx-third-label">🥉 {STAGE_LABELS['3rd']}</div>
             <div className="bx-cell bx-cell-third">
               <BracketMatch num={BRACKET_LINEAR.third[0]} {...common} />
             </div>

@@ -158,6 +158,19 @@ body {
 .scores-toggle input:checked + .switch-track .switch-thumb { transform: translateX(16px); }
 .scores-toggle input:focus-visible + .switch-track { box-shadow: 0 0 0 2px var(--accent); }
 
+/* On narrow screens the corner controls can't sit beside the title without
+   crowding it — drop them into their own centered row beneath the hero. */
+@media (max-width: 640px) {
+  .title-block h1 { font-size: 1.85rem; }
+  .hero-corner {
+    position: static;
+    order: 2; /* the header is a flex column; push the controls below the title */
+    margin-top: 14px;
+    justify-content: center;
+    width: 100%;
+  }
+}
+
 /* ---------- Score & spoilers ---------- */
 .score {
   font-size: 1.15rem;
@@ -330,14 +343,31 @@ body {
   box-sizing: border-box;
 }
 .bracket {
-  --bx-conn: var(--bracket-line);
   --bx-gap: 30px;
-  --bx-stub: calc(var(--bx-gap) + 1px);
+  position: relative;
   display: flex;
   gap: var(--bx-gap);
   align-items: stretch;
 }
+/* Computed connector tree, drawn behind the cards (see Bracket.jsx). */
+.bx-lines {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  z-index: 0;
+  overflow: visible;
+}
+.bx-lines path {
+  fill: none;
+  stroke: var(--bracket-line);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
 .bx-col {
+  position: relative;
+  z-index: 1;
   display: flex;
   flex-direction: column;
   flex: 1 1 0;
@@ -362,43 +392,16 @@ body {
   flex: 1;
 }
 
-/* Each match sits in a cell that owns its elbow connector. Cells flex to share
-   the column height equally, so a round's boxes are vertically centered between
-   their two feeders and connectors meet cleanly. */
+/* Cells flex to share the column height equally (so a round's boxes sit
+   centered between their feeders); the small vertical padding keeps adjacent
+   cards from pressing against each other. */
 .bx-cell {
   position: relative;
   flex: 1 1 0;
   display: flex;
   flex-direction: column;
   justify-content: center;
-}
-
-/* --- Outgoing stub: every feeding column (.bx-emit) sends a rightward
-   horizontal line across the gap to the round it feeds. The +1px covers the
-   gap-vs-edge rounding so lines visually touch the card edge. --- */
-.bx-emit .bx-cell::after {
-  content: '';
-  position: absolute;
-  top: 50%;
-  left: 100%;
-  width: var(--bx-stub);
-  border-top: 1.5px solid var(--bx-conn);
-}
-
-/* --- Vertical arm: a fed column (.bx-arm) draws a vertical line along its
-   incoming (left) edge, spanning up to its top feeder and down to its bottom
-   feeder. The body uses space-around, so the two feeders sit symmetric about
-   this box's centre — a full-cell-height line centred on the box reaches both
-   feeder rows. The Final's third-place cell carries no arm. --- */
-.bx-arm .bx-cell:not(.bx-cell-third)::before {
-  content: '';
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  height: 100%;
-  width: 0;
-  right: 100%;
-  border-left: 1.5px solid var(--bx-conn);
+  padding: 4px 0;
 }
 
 .bx-match {
@@ -500,13 +503,16 @@ body {
   color: var(--text-faint);
 }
 .bx-score-extra .score-check { margin-top: 0; }
+/* Third-place match: given the same prominence as the Final header. */
 .bx-third-label {
   text-align: center;
-  font-size: 0.6rem;
+  font-family: var(--font-display);
+  font-size: 0.68rem;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--text-faint);
-  margin: 10px 0 4px;
+  letter-spacing: 0.08em;
+  color: var(--gold);
+  margin: 18px 0 8px;
 }
 
 /* Narrow / phone: fall back to a horizontal-scrolling row of fixed columns so
