@@ -554,7 +554,7 @@ body {
 /* Narrow / phone: fall back to a horizontal-scrolling row of fixed columns so
    boxes stay legible instead of crushing to nothing. */
 @media (max-width: 900px) {
-  .bracket-wrap { padding: 0 16px; }
+  .bracket-wrap { padding: 0; }
   /* Horizontal scroll only: pin overflow-y:hidden so the bracket isn't
      vertically scrollable, letting vertical swipes fall through to scroll the
      page (overflow-x:auto alone would make overflow-y compute to auto and
@@ -563,7 +563,10 @@ body {
   .bracket {
     overflow-x: auto;
     overflow-y: hidden;
-    padding-bottom: 14px;
+    /* Inset lives INSIDE the scroll container (not on .bracket-wrap, which sits
+       outside the clip box) so the cards' drop shadow + 1px ring have room on
+       all four edges and aren't cropped at the scroll extremes. */
+    padding: 8px 16px 14px;
   }
   .bx-col { flex: 0 0 184px; }
   .bx-col-final { flex: 0 0 184px; }
