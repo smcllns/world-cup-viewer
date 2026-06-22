@@ -63,7 +63,7 @@ function MatchRow({ m, tz, hideScores }) {
   )
 }
 
-export default function MatchList({ matches, tz, hideScores }) {
+export default function MatchList({ matches, tz, hideScores, setHideScores = () => {} }) {
   const [tab, setTab] = useState('upcoming') // 'upcoming' | 'played'
 
   const groups = useMemo(() => {
@@ -88,25 +88,40 @@ export default function MatchList({ matches, tz, hideScores }) {
 
   return (
     <div className="matchlist">
-      <div className="ml-toggle" role="tablist" aria-label="Match list filter">
-        <button
-          type="button"
-          role="tab"
-          aria-selected={tab === 'upcoming'}
-          className={`ml-tab${tab === 'upcoming' ? ' active' : ''}`}
-          onClick={() => setTab('upcoming')}
-        >
-          Upcoming
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={tab === 'played'}
-          className={`ml-tab${tab === 'played' ? ' active' : ''}`}
-          onClick={() => setTab('played')}
-        >
-          Played
-        </button>
+      <div className="ml-controls">
+        <div className="ml-toggle" role="tablist" aria-label="Match list filter">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={tab === 'upcoming'}
+            className={`ml-tab${tab === 'upcoming' ? ' active' : ''}`}
+            onClick={() => setTab('upcoming')}
+          >
+            Upcoming
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={tab === 'played'}
+            className={`ml-tab${tab === 'played' ? ' active' : ''}`}
+            onClick={() => setTab('played')}
+          >
+            Played
+          </button>
+        </div>
+        {/* Global spoiler toggle. Scores also appear in the knockout bracket, so
+            this governs there too — it just lives where scores are most visible. */}
+        <label className="scores-toggle" title="Toggle spoiler-free mode for all scores">
+          <span className="scores-toggle-label">{hideScores ? '🙈' : '👁'} Scores</span>
+          <input
+            type="checkbox"
+            role="switch"
+            aria-label="Show scores"
+            checked={!hideScores}
+            onChange={() => setHideScores((h) => !h)}
+          />
+          <span className="switch-track"><span className="switch-thumb" /></span>
+        </label>
       </div>
 
       {total === 0 ? (

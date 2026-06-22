@@ -57,6 +57,10 @@ body {
   font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   min-height: 100vh;
+  /* Clip any sliver of horizontal overflow from the full-bleed 100vw bracket
+     without creating a scroll container (which `hidden` would, breaking the
+     sticky day headers). */
+  overflow-x: clip;
 }
 
 .app {
@@ -559,12 +563,19 @@ body {
 /* ---------- Match list ---------- */
 .matchlist { display: flex; flex-direction: column; width: 100%; max-width: 800px; margin: 0 auto; }
 
+.ml-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap; /* on a very narrow phone the scores toggle drops below rather than clipping */
+  gap: 10px 12px;
+  margin-bottom: 16px;
+}
+.ml-controls .scores-toggle { flex: 0 0 auto; }
 .ml-toggle {
   display: inline-flex;
-  align-self: flex-start;
   gap: 2px;
   padding: 3px;
-  margin-bottom: 16px;
   background: var(--bg-soft);
   border: 1px solid var(--border);
   border-radius: 10px;
@@ -707,7 +718,6 @@ body {
     margin-bottom: 12px;
     justify-content: center;
   }
-  .scores-toggle-label { display: none; }
 
   /* Prevent iOS auto-zoom on focus by keeping form text >= 16px. */
   select {

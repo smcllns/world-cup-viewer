@@ -138,19 +138,6 @@ export default function App() {
     <div className="app">
       <header className="app-header">
         <div className="hero-corner">
-          <label className="scores-toggle" title="Toggle spoiler-free mode for all scores">
-            <span className="scores-toggle-label" aria-hidden="true">
-              {hideScores ? '🙈' : '👁'} Scores
-            </span>
-            <input
-              type="checkbox"
-              role="switch"
-              aria-label="Show scores"
-              checked={!hideScores}
-              onChange={() => setHideScores((h) => !h)}
-            />
-            <span className="switch-track"><span className="switch-thumb" /></span>
-          </label>
           <button
             className="icon-btn"
             onClick={toggleTheme}
@@ -196,7 +183,7 @@ export default function App() {
       <hr className="section-rule" />
 
       <section className="list-view">
-        <MatchList matches={displayMatches} tz={tz} hideScores={hideScores} />
+        <MatchList matches={displayMatches} tz={tz} hideScores={hideScores} setHideScores={setHideScores} />
       </section>
 
       <hr className="section-rule" />
