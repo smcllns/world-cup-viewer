@@ -1,6 +1,7 @@
-// Cross-source confirmation badge (OpenFootball / ESPN / TheSportsDB). Full form
-// for the card/detail; `compact` form ("✓3" / "⚠") for the dense Week & Bracket
-// cells. Renders nothing until >= 2 sources have a final for the match.
+// Cross-source confirmation badge (OpenFootball / ESPN / TheSportsDB). Shown in
+// the match detail modal only — the mini bracket/list cards stay uncluttered. The
+// `compact` form ("✓3" / "⚠") remains for any dense cell that wants it. Renders
+// nothing until >= 2 sources have a final for the match.
 export default function ScoreCheck({ match, compact = false }) {
   const sc = match.scoreCheck
   if (!sc) return null

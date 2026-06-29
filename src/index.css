@@ -918,6 +918,14 @@ body {
 }
 .md-meta { display: grid; gap: 6px; font-size: 0.86rem; color: var(--text-dim); margin-bottom: 16px; }
 .md-meta strong { color: var(--text); margin-right: 6px; font-weight: 600; }
+/* Kickoff date/time is the primary thing people open this modal for — give it its
+   own labelled block, larger and in full-strength text, above the other meta. */
+.md-when { display: flex; flex-direction: column; gap: 1px; margin-bottom: 4px; }
+.md-when-label {
+  font-size: 0.66rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.06em; color: var(--text-faint);
+}
+.md-when-value { font-size: 1.12rem; font-weight: 700; color: var(--text); line-height: 1.3; }
 .md-section { border-top: 1px solid var(--border); padding-top: 12px; margin-bottom: 12px; }
 .md-section h4 { margin: 0 0 8px; font-size: 0.82rem; color: var(--text); }
 .md-watch { display: grid; gap: 6px; font-size: 0.82rem; color: var(--text-dim); }

@@ -113,7 +113,10 @@ export default function MatchDetail({ match, tz, hideScores, onClose }) {
         </div>
 
         <div className="md-meta">
-          <div><strong>When</strong> {formatDateLong(match.ko, tz)} · {formatTime(match.ko, tz)} {tzAbbrev(match.ko, tz)}</div>
+          <div className="md-when">
+            <span className="md-when-label">When</span>
+            <span className="md-when-value">{formatDateLong(match.ko, tz)} · {formatTime(match.ko, tz)} {tzAbbrev(match.ko, tz)}</span>
+          </div>
           <div><strong>Stadium local</strong> {formatTime(match.ko, venue.tz)} {tzAbbrev(match.ko, venue.tz)}</div>
           <div><strong>Venue</strong> {venue.countryFlag} {venue.name}, {venue.city}, {venue.country}</div>
         </div>

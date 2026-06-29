@@ -6,7 +6,6 @@ import { teamKickoffTooltip } from '../utils/time.js'
 import { useFollow } from '../context/follow.jsx'
 import { useDetail } from '../context/detail.js'
 import LiveBadge from './LiveBadge.jsx'
-import ScoreCheck from './ScoreCheck.jsx'
 
 // One team row: flag + name on the left, score (when played) flush right.
 function Side({ name, ko, score }) {
@@ -52,11 +51,7 @@ function BracketMatch({ num, byNum, tz, hideScores, heading }) {
           {showScore && (m.pens || m.aet) && (
             <div className="bx-score-extra">
               {m.pens ? `p ${m.pens[0]}–${m.pens[1]}` : 'AET'}
-              <ScoreCheck match={m} compact />
             </div>
-          )}
-          {showScore && !m.pens && !m.aet && m.scoreCheck && (
-            <div className="bx-score-extra"><ScoreCheck match={m} compact /></div>
           )}
         </div>
       </div>
