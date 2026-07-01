@@ -97,6 +97,20 @@ describe('resolveKnockoutSlots', () => {
     expect(byNum[104].t2).toBe('Spain') // won SF 102 on penalties
   })
 
+  it('does not propagate a placeholder as a loser when a side is unresolved', () => {
+    // The feed can attach a score to a knockout match before both team names
+    // resolve (score is set independently of isRealTeam). The beaten side must
+    // not be pushed into the third-place match as a raw placeholder.
+    const matches = [
+      { num: 101, stage: 'SF', t1: 'Winner Match 97', t2: 'Spain', score: [0, 2] },
+      { num: 103, stage: '3rd', t1: 'Loser Match 101', t2: 'Loser Match 102' },
+      { num: 104, stage: 'Final', t1: 'Winner Match 101', t2: 'Winner Match 102' },
+    ]
+    const byNum = Object.fromEntries(resolveKnockoutSlots(matches).map((m) => [m.num, m]))
+    expect(byNum[104].t1).toBe('Spain') // winner still resolves
+    expect(byNum[103].t1).toBe('Loser Match 101') // loser stays a placeholder, not "Winner Match 97"
+  })
+
   it('leaves the array untouched when nothing has resolved', () => {
     const matches = [{ num: 89, stage: 'R16', t1: 'Winner Match 74', t2: 'Winner Match 77' }]
     expect(resolveKnockoutSlots(matches)).toBe(matches)

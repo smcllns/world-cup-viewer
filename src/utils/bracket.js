@@ -113,7 +113,12 @@ export function resolveKnockoutSlots(matches) {
     const w = knockoutWinner(nm)
     if (w != null) {
       winners[nm.num] = w
-      losers[nm.num] = w === nm.t1 ? nm.t2 : nm.t1
+      // Guard the loser the same way knockoutWinner guards the winner: a decided
+      // match can still carry a placeholder on the beaten side (the feed sets a
+      // score independently of resolving both team names), and we must not
+      // propagate that placeholder into a "Loser Match N" slot.
+      const loser = w === nm.t1 ? nm.t2 : nm.t1
+      if (isRealTeam(loser)) losers[nm.num] = loser
     }
     byNum[m.num] = nm
   }
