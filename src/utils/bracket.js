@@ -80,17 +80,29 @@ export function knockoutWinner(m) {
   return side && isRealTeam(side) ? side : null
 }
 
-// Fill "Winner Match N" placeholders in later rounds with the actual winner of
-// match N once it's decided, so a resolved team flows all the way up the bracket
-// (R32 → R16 → QF → SF → Final) without waiting for the feed to publish each
-// downstream matchup. Feeder matches always carry a lower number than the match
-// they feed, so a single ascending-number pass cascades in one go.
-const MATCH_SLOT = /^Winner Match (\d+)$/
+// Beaten side of a decided knockout match (the semifinal losers feed the
+// third-place match). Null under the same conditions as knockoutWinner.
+export function knockoutLoser(m) {
+  const w = knockoutWinner(m)
+  if (!w) return null
+  const loser = w === m.t1 ? m.t2 : m.t1
+  return isRealTeam(loser) ? loser : null
+}
+
+// Fill "Winner Match N" / "Loser Match N" placeholders in later rounds with the
+// actual result of match N once it's decided, so resolved teams flow all the way
+// up the bracket (R32 → R16 → QF → SF → Final, plus the semifinal losers into the
+// third-place match) without waiting for the feed to publish each downstream
+// matchup. Feeder matches always carry a lower number than the match they feed,
+// so a single ascending-number pass cascades in one go.
+const MATCH_SLOT = /^(Winner|Loser) Match (\d+)$/
 export function resolveKnockoutSlots(matches) {
   const winners = {} // match num -> winning team name
+  const losers = {} // match num -> beaten team name
   const sub = (name) => {
     const hit = MATCH_SLOT.exec(name)
-    return (hit && winners[hit[1]]) || name
+    if (!hit) return name
+    return (hit[1] === 'Winner' ? winners : losers)[hit[2]] || name
   }
   let changed = false
   const byNum = {}
@@ -99,7 +111,10 @@ export function resolveKnockoutSlots(matches) {
     const t2 = sub(m.t2)
     const nm = t1 === m.t1 && t2 === m.t2 ? m : ((changed = true), { ...m, t1, t2 })
     const w = knockoutWinner(nm)
-    if (w != null) winners[nm.num] = w
+    if (w != null) {
+      winners[nm.num] = w
+      losers[nm.num] = w === nm.t1 ? nm.t2 : nm.t1
+    }
     byNum[m.num] = nm
   }
   // Preserve the caller's array order; return the original array untouched when

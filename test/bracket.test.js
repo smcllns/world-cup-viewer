@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { MATCHES } from '../src/data/matches.js'
 import { TEAMS } from '../src/data/teams.js'
-import { groupSlotMap, knockoutWinner, resolveKnockoutSlots } from '../src/utils/bracket.js'
+import { groupSlotMap, knockoutWinner, knockoutLoser, resolveKnockoutSlots } from '../src/utils/bracket.js'
 
 describe('groupSlotMap', () => {
   const map = groupSlotMap(MATCHES)
@@ -38,6 +38,18 @@ describe('knockoutWinner', () => {
   })
 })
 
+describe('knockoutLoser', () => {
+  it('is the beaten side of a decided match', () => {
+    expect(knockoutLoser({ t1: 'France', t2: 'Sweden', score: [3, 0] })).toBe('Sweden')
+    expect(knockoutLoser({ t1: 'Germany', t2: 'Paraguay', score: [1, 1], pens: [3, 4] })).toBe('Germany')
+  })
+
+  it('returns null when undecided', () => {
+    expect(knockoutLoser({ t1: 'France', t2: 'Sweden' })).toBeNull()
+    expect(knockoutLoser({ t1: 'France', t2: 'Sweden', score: [1, 1] })).toBeNull()
+  })
+})
+
 describe('resolveKnockoutSlots', () => {
   it('propagates decided knockout winners into the next round', () => {
     const matches = [
@@ -69,6 +81,20 @@ describe('resolveKnockoutSlots', () => {
     expect(byNum[90].t1).toBe('Canada')
     expect(byNum[97].t2).toBe('Canada')
     expect(byNum[97].t1).toBe('Winner Match 89') // still unresolved — feeder undecided
+  })
+
+  it('feeds the beaten semifinalists into the third-place match', () => {
+    const matches = [
+      { num: 101, stage: 'SF', t1: 'Argentina', t2: 'France', score: [0, 1] },
+      { num: 102, stage: 'SF', t1: 'Brazil', t2: 'Spain', score: [2, 2], pens: [4, 5] },
+      { num: 103, stage: '3rd', t1: 'Loser Match 101', t2: 'Loser Match 102' },
+      { num: 104, stage: 'Final', t1: 'Winner Match 101', t2: 'Winner Match 102' },
+    ]
+    const byNum = Object.fromEntries(resolveKnockoutSlots(matches).map((m) => [m.num, m]))
+    expect(byNum[103].t1).toBe('Argentina') // lost SF 101
+    expect(byNum[103].t2).toBe('Brazil') // lost SF 102 on penalties
+    expect(byNum[104].t1).toBe('France') // won SF 101
+    expect(byNum[104].t2).toBe('Spain') // won SF 102 on penalties
   })
 
   it('leaves the array untouched when nothing has resolved', () => {
