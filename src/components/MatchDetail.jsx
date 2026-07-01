@@ -7,7 +7,6 @@ import { formatTime, formatDateLong, tzAbbrev, liveState, teamKickoffTooltip } f
 import { useFollow } from '../context/follow.jsx'
 import { useModalA11y } from '../hooks/useModalA11y.js'
 import LiveBadge from './LiveBadge.jsx'
-import ScoreCheck from './ScoreCheck.jsx'
 
 // Minute label including stoppage time, e.g. "45+3'".
 const minuteLabel = (e) => (e.minute != null ? `${e.minute}${e.extra ? `+${e.extra}` : ''}'` : '')
@@ -96,9 +95,8 @@ export default function MatchDetail({ match, tz, hideScores, onClose }) {
               ) : (
                 <>
                   {match.score[0]}–{match.score[1]}
-                  {match.pens && <div className="md-extra">pens {match.pens[0]}–{match.pens[1]}</div>}
+                  {match.pens && <div className="md-extra">penalties<br />{match.pens[0]}–{match.pens[1]}</div>}
                   {match.aet && !match.pens && <div className="md-extra">after extra time</div>}
-                  <ScoreCheck match={match} />
                 </>
               )
             ) : (

@@ -70,14 +70,15 @@ describe('MatchDetail score + extras', () => {
   it('renders penalties (taking precedence over AET)', () => {
     const m = { ...groupMatch, score: [1, 1], aet: true, pens: [5, 4] }
     renderDetail({ match: m })
-    expect(screen.getByText(/pens 5–4/)).toBeInTheDocument()
+    expect(screen.getByText(/penalties/)).toBeInTheDocument()
+    expect(screen.getByText(/5–4/)).toBeInTheDocument()
     expect(screen.queryByText('after extra time')).not.toBeInTheDocument()
   })
 
-  it('renders the score-confirmation badge', () => {
+  it('does not show a source-confirmation badge', () => {
     const m = { ...groupMatch, score: [3, 0], scoreCheck: { agree: true, count: 2 } }
     renderDetail({ match: m })
-    expect(screen.getByText(/confirmed by 2 sources/)).toBeInTheDocument()
+    expect(screen.queryByText(/confirmed by 2 sources/)).not.toBeInTheDocument()
   })
 })
 
