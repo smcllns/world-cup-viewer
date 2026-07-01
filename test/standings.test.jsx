@@ -157,10 +157,9 @@ describe('Standings', () => {
     }
   })
 
-  it('toggles following a team via the star button', () => {
+  it('renders no follow/star buttons', () => {
     renderStandings()
-    const stars = screen.getAllByRole('button', { name: /^Follow / })
-    fireEvent.click(stars[0])
-    expect(screen.getAllByRole('button', { name: /^Unfollow / }).length).toBeGreaterThan(0)
+    expect(screen.queryByRole('button', { name: /^Follow / })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^Unfollow / })).not.toBeInTheDocument()
   })
 })

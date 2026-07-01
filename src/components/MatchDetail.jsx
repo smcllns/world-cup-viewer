@@ -4,29 +4,11 @@ import { FLAG_BY_TEAM } from '../data/teams.js'
 import { STAGE_LABELS } from '../data/matches.js'
 import { US_BROADCAST } from '../data/broadcast.js'
 import { formatTime, formatDateLong, tzAbbrev, liveState, teamKickoffTooltip } from '../utils/time.js'
-import { useFollow } from '../context/follow.jsx'
 import { useModalA11y } from '../hooks/useModalA11y.js'
 import LiveBadge from './LiveBadge.jsx'
 
 // Minute label including stoppage time, e.g. "45+3'".
 const minuteLabel = (e) => (e.minute != null ? `${e.minute}${e.extra ? `+${e.extra}` : ''}'` : '')
-
-function FollowStar({ name }) {
-  const { isFollowed, toggle } = useFollow()
-  if (!FLAG_BY_TEAM[name]) return null
-  const on = isFollowed(name)
-  return (
-    <button
-      className={`star${on ? ' on' : ''}`}
-      onClick={() => toggle(name)}
-      aria-label={on ? `Unfollow ${name}` : `Follow ${name}`}
-      title={on ? `Unfollow ${name}` : `Follow ${name}`}
-      aria-pressed={on}
-    >
-      {on ? '★' : '☆'}
-    </button>
-  )
-}
 
 function Timeline({ match }) {
   const events = []
@@ -86,7 +68,6 @@ export default function MatchDetail({ match, tz, hideScores, onClose }) {
           <div className="md-team" title={teamKickoffTooltip(match.ko, match.t1) || undefined}>
             <span className="md-flag">{FLAG_BY_TEAM[match.t1] || '•'}</span>
             <span className="md-name">{match.t1}</span>
-            <FollowStar name={match.t1} />
           </div>
           <div className="md-score">
             {hasScore ? (
@@ -106,7 +87,6 @@ export default function MatchDetail({ match, tz, hideScores, onClose }) {
           <div className="md-team" title={teamKickoffTooltip(match.ko, match.t2) || undefined}>
             <span className="md-flag">{FLAG_BY_TEAM[match.t2] || '•'}</span>
             <span className="md-name">{match.t2}</span>
-            <FollowStar name={match.t2} />
           </div>
         </div>
 

@@ -54,8 +54,6 @@ describe('MatchDetail null + basic render', () => {
     )
     // Placeholder team names have no flag → bullet fallback.
     expect(screen.getByText(knockoutMatch.t1)).toBeInTheDocument()
-    // No FollowStar for unflagged teams.
-    expect(screen.queryByRole('button', { name: /^Follow/ })).not.toBeInTheDocument()
   })
 })
 
@@ -162,11 +160,11 @@ describe('MatchDetail live states', () => {
   })
 })
 
-describe('MatchDetail follow + meta + actions', () => {
-  it('toggles follow on a team star', () => {
+describe('MatchDetail meta + actions', () => {
+  it('shows no follow/star buttons', () => {
     renderDetail()
-    fireEvent.click(screen.getByRole('button', { name: 'Follow Mexico' }))
-    expect(screen.getByRole('button', { name: 'Unfollow Mexico' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^Follow/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^Unfollow/ })).not.toBeInTheDocument()
   })
 
   it('shows venue/broadcast meta', () => {
