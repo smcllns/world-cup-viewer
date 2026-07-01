@@ -15,18 +15,6 @@ const STATUS_BADGE = {
   out: { cls: 'q-out', label: '✕', title: 'Eliminated' },
 }
 
-function Star({ name }) {
-  const { isFollowed, toggle } = useFollow()
-  const on = isFollowed(name)
-  return (
-    <button className={`star${on ? ' on' : ''}`} onClick={() => toggle(name)} aria-pressed={on}
-      aria-label={on ? `Unfollow ${name}` : `Follow ${name}`}
-      title={on ? `Unfollow ${name}` : `Follow ${name}`}>
-      {on ? '★' : '☆'}
-    </button>
-  )
-}
-
 // "As it stands" projection of where this group's current placings would land in
 // the Round of 32. A provisional snapshot — opponents shift as other groups play.
 function AsItStands({ proj, onGoToMatch }) {
@@ -113,7 +101,6 @@ function GroupTable({ group, rows, qual, clinch, asItStands, onGoToMatch, liveTe
               <tr key={r.name} className={r.rank <= 2 ? 'qualifies' : ''}>
                 <td className="col-team">
                   <span className="rank">{r.rank}</span>
-                  <Star name={r.name} />
                   <span className="team-flag">{r.flag}</span>
                   <span className={`row-team${isFollowed(r.name) ? ' followed' : ''}`}>{r.name}</span>
                   {liveTeams.has(r.name) && (

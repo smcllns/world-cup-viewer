@@ -11,6 +11,7 @@ import { fetchLive, applyLive, LIVE_SOURCE, espnFinalScore, historyDates } from 
 import { fetchBackup, BACKUP_SOURCE, sdbFinalScore } from './services/thesportsdb.js'
 import { annotateScoreChecks } from './services/reconcile.js'
 import { computeClinch, resolveClinchedSlots } from './utils/clinch.js'
+import { resolveKnockoutSlots } from './utils/bracket.js'
 import { useFollow } from './context/follow.jsx'
 import { DetailContext } from './context/detail.js'
 
@@ -115,10 +116,15 @@ export default function App() {
   const liveCount = useMemo(() => matches.filter((m) => m.live).length, [matches])
   // Guaranteed clinch/elimination status per team (see utils/clinch.js).
   const clinch = useMemo(() => computeClinch(matches), [matches])
-  // Fill clinched group winners into knockout "Winner Group X" slots so the
-  // resolved team reaches every view consistently (list, bracket, detail
-  // modal, calendar) — not just the bracket's own rendering.
-  const displayMatches = useMemo(() => resolveClinchedSlots(matches, clinch), [matches, clinch])
+  // Fill clinched group winners into knockout "Winner Group X" slots, then
+  // propagate each decided knockout result into the "Winner Match N" slot it
+  // feeds, so a resolved team reaches every view consistently (list, bracket,
+  // detail modal, calendar) instead of waiting for the feed to publish each
+  // downstream matchup.
+  const displayMatches = useMemo(
+    () => resolveKnockoutSlots(resolveClinchedSlots(matches, clinch)),
+    [matches, clinch],
+  )
 
   // Auto-refresh (always on): poll fast (30s) while a match is live so the score
   // and clock track ESPN closely, and slow (2 min) otherwise to go easy on the

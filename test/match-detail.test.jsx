@@ -54,8 +54,6 @@ describe('MatchDetail null + basic render', () => {
     )
     // Placeholder team names have no flag → bullet fallback.
     expect(screen.getByText(knockoutMatch.t1)).toBeInTheDocument()
-    // No FollowStar for unflagged teams.
-    expect(screen.queryByRole('button', { name: /^Follow/ })).not.toBeInTheDocument()
   })
 })
 
@@ -70,14 +68,15 @@ describe('MatchDetail score + extras', () => {
   it('renders penalties (taking precedence over AET)', () => {
     const m = { ...groupMatch, score: [1, 1], aet: true, pens: [5, 4] }
     renderDetail({ match: m })
-    expect(screen.getByText(/pens 5–4/)).toBeInTheDocument()
+    expect(screen.getByText(/penalties/)).toBeInTheDocument()
+    expect(screen.getByText(/5–4/)).toBeInTheDocument()
     expect(screen.queryByText('after extra time')).not.toBeInTheDocument()
   })
 
-  it('renders the score-confirmation badge', () => {
+  it('does not show a source-confirmation badge', () => {
     const m = { ...groupMatch, score: [3, 0], scoreCheck: { agree: true, count: 2 } }
     renderDetail({ match: m })
-    expect(screen.getByText(/confirmed by 2 sources/)).toBeInTheDocument()
+    expect(screen.queryByText(/confirmed by 2 sources/)).not.toBeInTheDocument()
   })
 })
 
@@ -161,11 +160,11 @@ describe('MatchDetail live states', () => {
   })
 })
 
-describe('MatchDetail follow + meta + actions', () => {
-  it('toggles follow on a team star', () => {
+describe('MatchDetail meta + actions', () => {
+  it('shows no follow/star buttons', () => {
     renderDetail()
-    fireEvent.click(screen.getByRole('button', { name: 'Follow Mexico' }))
-    expect(screen.getByRole('button', { name: 'Unfollow Mexico' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^Follow/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^Unfollow/ })).not.toBeInTheDocument()
   })
 
   it('shows venue/broadcast meta', () => {
